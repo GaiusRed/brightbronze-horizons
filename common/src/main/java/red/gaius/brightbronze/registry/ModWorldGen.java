@@ -7,6 +7,7 @@ import net.minecraft.core.registries.Registries;
 import net.minecraft.world.level.chunk.ChunkGenerator;
 import red.gaius.brightbronze.BrightbronzeHorizons;
 import red.gaius.brightbronze.world.gen.SingleBiomeChunkGenerator;
+import red.gaius.brightbronze.world.gen.VoidChunkGenerator;
 
 /**
  * Registry for world generation components like chunk generators.
@@ -21,6 +22,9 @@ public final class ModWorldGen {
 
     public static final RegistrySupplier<MapCodec<? extends ChunkGenerator>> SINGLE_BIOME_GENERATOR =
             CHUNK_GENERATORS.register("single_biome", () -> SingleBiomeChunkGenerator.CODEC);
+
+    public static final RegistrySupplier<MapCodec<? extends ChunkGenerator>> VOID_GENERATOR =
+            CHUNK_GENERATORS.register("void", () -> VoidChunkGenerator.CODEC);
 
     private ModWorldGen() {
     }

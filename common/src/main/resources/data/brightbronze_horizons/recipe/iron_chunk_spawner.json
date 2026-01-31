@@ -6,15 +6,9 @@
     "ACA"
   ],
   "key": {
-    "A": {
-      "item": "brightbronze_horizons:brightbronze_ingot"
-    },
-    "B": {
-      "item": "minecraft:iron_block"
-    },
-    "C": {
-      "item": "minecraft:campfire"
-    }
+    "A": "brightbronze_horizons:brightbronze_ingot",
+    "B": "minecraft:iron_block",
+    "C": "minecraft:campfire"
   },
   "result": {
     "id": "brightbronze_horizons:iron_chunk_spawner",

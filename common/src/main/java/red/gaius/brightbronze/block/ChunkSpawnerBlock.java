@@ -18,6 +18,7 @@ import net.minecraft.world.phys.BlockHitResult;
 import red.gaius.brightbronze.BrightbronzeHorizons;
 import red.gaius.brightbronze.world.BiomePoolManager;
 import red.gaius.brightbronze.world.ChunkSpawnerTier;
+import red.gaius.brightbronze.world.PlayableAreaData;
 import red.gaius.brightbronze.world.chunk.ChunkCopyService;
 import red.gaius.brightbronze.world.dimension.SourceDimensionManager;
 
@@ -164,6 +165,32 @@ public class ChunkSpawnerBlock extends Block {
             tier.getName(), targetChunk.x, targetChunk.z, player.getName().getString()
         );
 
+        // Step 0: Validate that the target chunk can be expanded into
+        PlayableAreaData playableData = PlayableAreaData.get(level.getServer());
+        
+        if (!playableData.canExpandInto(targetChunk)) {
+            if (playableData.isChunkPlayable(targetChunk)) {
+                BrightbronzeHorizons.LOGGER.warn(
+                    "Target chunk ({}, {}) is already in playable area",
+                    targetChunk.x, targetChunk.z
+                );
+                player.displayClientMessage(
+                    Component.translatable("message.brightbronze_horizons.spawner.already_spawned"),
+                    true
+                );
+            } else {
+                BrightbronzeHorizons.LOGGER.warn(
+                    "Target chunk ({}, {}) is not adjacent to playable area",
+                    targetChunk.x, targetChunk.z
+                );
+                player.displayClientMessage(
+                    Component.translatable("message.brightbronze_horizons.spawner.not_adjacent"),
+                    true
+                );
+            }
+            return false;
+        }
+
         // Step 1: Select a random biome from this tier's pool
         Optional<Holder<Biome>> selectedBiome = BiomePoolManager.selectRandomBiome(
             level.registryAccess(),
@@ -204,6 +231,9 @@ public class ChunkSpawnerBlock extends Block {
         );
 
         if (success) {
+            // Register the new chunk in the playable area
+            playableData.addChunk(targetChunk);
+            
             BrightbronzeHorizons.LOGGER.info(
                 "Successfully spawned {} biome chunk at ({}, {})",
                 biomeId, targetChunk.x, targetChunk.z

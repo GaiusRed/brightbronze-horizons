@@ -9,6 +9,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.chunk.ChunkGenerator;
+import net.minecraft.world.level.dimension.BuiltinDimensionTypes;
 import red.gaius.brightbronze.BrightbronzeHorizons;
 import red.gaius.brightbronze.registry.ModDimensions;
 import red.gaius.brightbronze.world.gen.SingleBiomeChunkGenerator;
@@ -47,10 +48,6 @@ public class SourceDimensionManager {
      * the existing dimension is returned. Otherwise, a new dimension is dynamically created
      * with a {@link SingleBiomeChunkGenerator} that wraps the overworld generator.
      * 
-     * <p><b>Important:</b> In MC 1.21, dynamic dimension creation may not be fully supported
-     * without mixins. For now, this method will return the overworld if the source dimension
-     * doesn't exist, to allow development to continue.
-     * 
      * @param server The Minecraft server
      * @param biomeId The biome's resource location (e.g., "minecraft:plains")
      * @return The server level for this biome's source dimension, or overworld as fallback
@@ -65,16 +62,49 @@ public class SourceDimensionManager {
             return existingLevel;
         }
 
-        // In MC 1.21, creating dimensions dynamically at runtime is complex.
-        // For now, we log a warning and return the overworld as a fallback.
-        // Full implementation would require mixins to unfreeze registries.
-        BrightbronzeHorizons.LOGGER.warn(
-            "Source dimension for biome {} does not exist. Using overworld as fallback. " +
-            "Dynamic dimension creation requires additional platform-specific setup.", 
-            biomeId
+        // Check if platform supports dynamic dimensions
+        if (!DimensionHelper.supportsDynamicDimensions()) {
+            BrightbronzeHorizons.LOGGER.warn(
+                "Platform does not support dynamic dimension creation. Using overworld as fallback for biome {}.",
+                biomeId
+            );
+            return server.getLevel(Level.OVERWORLD);
+        }
+
+        // Create the chunk generator for this biome
+        SingleBiomeChunkGenerator generator = createGeneratorForBiome(server, biomeId);
+        if (generator == null) {
+            BrightbronzeHorizons.LOGGER.error(
+                "Failed to create chunk generator for biome {}. Using overworld as fallback.",
+                biomeId
+            );
+            return server.getLevel(Level.OVERWORLD);
+        }
+
+        // Create the dynamic dimension
+        BrightbronzeHorizons.LOGGER.info("Creating source dimension for biome: {}", biomeId);
+        
+        ServerLevel newLevel = DimensionHelper.createDynamicDimension(
+            server,
+            dimensionKey,
+            BuiltinDimensionTypes.OVERWORLD,  // Use overworld dimension type
+            generator
         );
 
-        // Return overworld as fallback
+        if (newLevel != null) {
+            activeDimensions.put(biomeId, dimensionKey);
+            BrightbronzeHorizons.LOGGER.info(
+                "Successfully created source dimension for biome: {}",
+                biomeId
+            );
+            return newLevel;
+        }
+
+        // Fall back to overworld if creation failed
+        BrightbronzeHorizons.LOGGER.warn(
+            "Failed to create source dimension for biome {}. Using overworld as fallback.",
+            biomeId
+        );
         return server.getLevel(Level.OVERWORLD);
     }
 

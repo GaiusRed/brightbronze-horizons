@@ -457,14 +457,14 @@ None at this time.
 3. Phase 5 → Tier/biome pool system (needed by spawners)
 4. Phase 4 → Source dimensions (core mechanic)
 5. Phase 3 → Chunk spawners (ties it together)
-6. Phase 6 → Starting area (world initialization)
-7. Phase 7 → Mob spawning (enhancement)
-8. Phase 8 → Configuration (extensibility)
-9. Phase 9 → Block post-processing (data-driven)
-10. Phase 10–11 → Server robustness (hardening)
-11. Phase 12 → Platform code (parallel with above)
-12. Phase 13 → Polish (final)
-13. Phase 14 → Testing (ongoing + final)
+6. **Phase 6A → Void world type (CRITICAL - must come before Phase 6)**
+7. Phase 6 → Starting area (world initialization)
+8. Phase 7 → Mob spawning (enhancement)
+9. Phase 8 → Configuration (extensibility)
+10. Phase 9 → Block post-processing (data-driven)
+11. Phase 10–11 → Server robustness (hardening)
+12. Phase 12 → Polish (final)
+13. Phase 13 → Testing (ongoing + final)
 
 ---
 
@@ -591,7 +591,12 @@ None at this time.
 - [x] Create `SourceDimensionManager` — Manages per-biome source dimensions
 - [x] Create `SingleBiomeChunkGenerator` — Custom chunk generator for single-biome worlds
 - [x] Lazy dimension creation — Create source dimensions on-demand when first needed
-- [x] Dimension registry integration — Dynamic dimension registration (falls back to overworld; full dynamic creation needs mixins)
+- [x] Dimension registry integration — Dynamic dimension registration
+
+#### 4.4 Platform-Specific Dynamic Dimension Creation
+- [x] Fabric dynamic dimension registration — Use mixin accessor for `MinecraftServer.levels` map
+- [x] NeoForge dynamic dimension registration — Use same mixin-based approach as Fabric
+- [x] Common abstraction — `DimensionHelper` with `@ExpectPlatform` for cross-loader dimension creation
 
 #### 4.2 Chunk Copying System
 - [x] Create `ChunkCopyService` — Orchestrates chunk copying from source to playable
@@ -636,26 +641,92 @@ None at this time.
 
 ---
 
+### Phase 6A: Void World Type (Overworld)
+
+**Status:** 🔄 IN PROGRESS (BLOCKED)
+
+> **CRITICAL**: This phase must be completed before Phase 6. The mod's core mechanic requires the overworld to be a void world where chunks are only populated by the chunk spawning system. Without this, normal terrain generates and the chunk copy system cannot work correctly.
+
+#### 6A.1 Void Chunk Generator
+- [x] Create `VoidChunkGenerator` — Custom chunk generator that generates empty/void chunks
+- [x] Codec registration — Register codec for serialization/deserialization
+- [x] Empty terrain generation — Generate only void air (no blocks, no bedrock)
+- [x] Biome handling — Use a placeholder biome (e.g., Plains) for void chunks until terrain is copied
+- [x] Structure prevention — Prevent structure generation in void chunks (via empty `applyBiomeDecoration()`)
+
+#### 6A.2 Custom World Preset
+- [x] Create `BrightbronzeWorldPreset` — Custom world preset using VoidChunkGenerator for overworld
+- [x] World preset registration — Register via `WorldPreset` registry (JSON at `data/brightbronze_horizons/worldgen/world_preset/brightbronze.json`)
+- [x] Dimension settings — Configure overworld to use VoidChunkGenerator
+- [x] Nether/End unchanged — Keep Nether and End using normal generators
+
+#### 6A.3 World Creation Integration  
+- [x] World creation screen — Preset appears in world type selection (via `minecraft:normal` tag)
+- [ ] Default selection — Consider making Brightbronze preset the default when mod is installed
+- [x] Server support — Ensure preset works for dedicated server world creation
+
+#### 6A.4 Starting Area Visibility (BLOCKING ISSUE)
+- [ ] **Client chunk sync** — Copied chunks are not visible to player despite server-side success
+
+> **⚠️ CURRENT BLOCKING ISSUE (2026-02-01):**
+> 
+> The void world generates correctly (empty, no structures). The `StartingAreaManager` runs during `SERVER_STARTED` and logs report "9 of 9 chunks copied successfully." However, when the player spawns, they see only void — the copied 3×3 plains terrain is not visible.
+> 
+> **Root cause hypothesis:** The chunk copy runs server-side before the player joins. When the player connects and requests chunks, the client may receive stale/empty chunk data because:
+> 1. Chunks are copied during `SERVER_STARTED` but the client hasn't connected yet
+> 2. The `setBlock()` calls with `Block.UPDATE_ALL` may not trigger chunk resync to clients that load the chunks later
+> 3. The chunks need explicit resync/refresh after copy completes
+>
+> **Potential solutions to investigate:**
+> 1. Force chunk resend to clients after copy (using `ServerChunkCache` or chunk packet APIs)
+> 2. Move chunk copy to happen during world creation/spawn chunk generation phase
+> 3. Use `ChunkHolder.broadcastChanges()` or similar to notify clients of changes
+> 4. Mark chunks as needing full resend rather than relying on block update flags
+>
+> **See Appendix B** for relevant Fabric client logs from testing session.
+
+> **Implementation Note (Chunk By Chunk Reference):** See `tmp/chunkbychunk/Common/src/main/java/xyz/immortius/chunkbychunk/server/world/SkyChunkGenerator.java` for reference. Key points:
+> - Extends or wraps a parent generator for biome information
+> - Overrides `fillFromNoise()` to return empty chunks
+> - Retains parent generator reference for when chunks need to be "revealed"
+> - The approach: overworld is void, source dimensions generate real terrain, chunks are copied from source to overworld
+
+> **Implementation Note (MC 1.21.10):** World presets are registered via `RegistryDataLoader` and require JSON files in `data/<namespace>/worldgen/world_preset/`. The `WorldPreset` codec defines dimension configurations. Platform-specific code may be needed to make the preset visible in the world creation UI.
+
+**Suggested commit message:** `feat: Phase 6A — void chunk generator and custom world preset`
+
+---
+
 ### Phase 6: World Initialization & Starting Area
 
-**Status:** Not Started
+**Status:** 🔄 NEEDS REVISION (depends on Phase 6A)
 
-#### 6.1 Custom World Type / Preset
-- [ ] Create `BrightbronzeWorldPreset` — Custom world preset for the mod
-- [ ] Override spawn logic — Ensure 3×3 starting chunks
+> **Prerequisites:** Phase 6A must be completed first. The starting area initialization assumes the overworld uses VoidChunkGenerator.
 
-#### 6.2 Starting Area Generation
-- [ ] Create `StartingAreaManager` — Handles initial 3×3 chunk setup
-- [ ] Plains biome preference — Find/force Plains biome for start
-- [ ] Village placement — Ensure Village present in 3×3 area
-- [ ] Graceful degradation — Handle cases where ideal start is impossible
+#### 6.1 Starting Area Initialization
+- [ ] Revise `StartingAreaManager` — Copy 3×3 chunks from Plains source dimension into void overworld
+- [ ] Spawn point placement — Set spawn inside the copied 3×3 area
+- [ ] Chunk copy timing — Copy chunks BEFORE player spawns (during world creation, not SERVER_STARTED)
+- [ ] Village requirement — Ensure source dimension chunk contains village structures
+
+#### 6.2 Village Placement Strategy
+- [ ] Village detection — Scan Plains source dimension for village locations
+- [ ] Coordinate selection — Choose starting chunk coords where village exists in source dimension
+- [ ] Fallback behavior — If no village found within search radius, use best available location
 
 #### 6.3 Playable Area Tracking
-- [ ] Create `PlayableAreaData` — Server-level saved data tracking spawned chunks
-- [ ] Frontier detection — Track which chunks are at the edge for expansion
-- [ ] Adjacency validation — Ensure new chunks connect to existing area
+- [x] Create `PlayableAreaData` — Server-level saved data tracking spawned chunks (using MC 1.21 Codec-based SavedData API)
+- [x] Frontier detection — Track which chunks are at the edge for expansion
+- [x] Adjacency validation — Ensure new chunks connect to existing area
 
-**Suggested commit message:** `feat: Phase 6 — world initialization, starting area, and playable area tracking`
+#### 6.4 Chunk Copy Service Revision
+- [ ] Remove `isReplaceableBlock` check — Always overwrite (void → terrain is always valid)
+- [ ] Client sync — Ensure copied chunks are sent to clients correctly
+- [ ] Lighting updates — Properly recalculate lighting after chunk copy
+
+> **Implementation Note (MC 1.21.10):** `SavedData` uses `SavedDataType` with a `Codec` for serialization. The starting area must be initialized during world creation (before spawn chunk generation), not after server start.
+
+**Suggested commit message:** `feat: Phase 6 — starting area initialization with village placement`
 
 ---
 
@@ -774,48 +845,30 @@ None at this time.
 
 ---
 
-### Phase 12: Platform-Specific Code
+### Phase 12: Polish & UX
 
 **Status:** Not Started
 
-#### 12.1 Fabric Implementation
-- [ ] Update `ExampleModFabric.java` — Platform initialization
-- [ ] Fabric event hooks — Register Fabric-specific events
-- [ ] Fabric networking — Config sync packets
-
-#### 12.2 NeoForge Implementation
-- [ ] Update `ExampleModNeoForge.java` — Platform initialization
-- [ ] NeoForge event hooks — Register NeoForge-specific events
-- [ ] NeoForge networking — Config sync packets
-
-**Suggested commit message:** `feat: Phase 12 — Fabric and NeoForge platform implementations`
-
----
-
-### Phase 13: Polish & UX
-
-**Status:** Not Started
-
-#### 13.1 Player Feedback
+#### 12.1 Player Feedback
 - [ ] Chunk spawn particles — Visual effect when chunk spawns
 - [ ] Chunk spawn sound — Audio feedback
 - [ ] Failure messages — Clear chat/actionbar messages on failure
 - [ ] Advancement/toast — Optional notification on first chunk spawn
 
-#### 13.2 Debug & Admin Tools
+#### 12.2 Debug & Admin Tools
 - [ ] Debug command — `/brightbronze debug` for info
 - [ ] Force spawn command — Admin command to spawn specific biome chunk
 - [ ] Tier info command — List biomes in each tier
 
-**Suggested commit message:** `feat: Phase 13 — polish, UX feedback, and admin commands`
+**Suggested commit message:** `feat: Phase 12 — polish, UX feedback, and admin commands`
 
 ---
 
-### Phase 14: Testing & Validation
+### Phase 13: Testing & Validation
 
 **Status:** Not Started
 
-#### 14.1 Manual Testing
+#### 13.1 Manual Testing
 - [ ] Test new world creation with 3×3 start
 - [ ] Test each tier's chunk spawner
 - [ ] Test edge placement detection
@@ -823,13 +876,13 @@ None at this time.
 - [ ] Test dedicated server operation
 - [ ] Test config changes take effect
 
-#### 14.2 Edge Cases
+#### 13.2 Edge Cases
 - [ ] Test Emerald tier with no biomes (should fail gracefully)
 - [ ] Test expansion at world border
 - [ ] Test rapid chunk spawning by multiple players
 - [ ] Test world load/save with many source dimensions
 
-**Suggested commit message:** `test: Phase 14 — manual testing and edge case validation`
+**Suggested commit message:** `test: Phase 13 — manual testing and edge case validation`
 
 ---
 
@@ -840,16 +893,57 @@ None at this time.
 | 1 | Core Infrastructure | ✅ Completed |
 | 2 | Brightbronze Materials | ✅ Completed |
 | 3 | Chunk Spawner System | ✅ Completed |
-| 4 | Source Dimensions | ✅ Completed* |
+| 4 | Source Dimensions | ✅ Completed |
 | 5 | Tier & Biome Pools | ✅ Completed |
-| 6 | World Initialization | ⬜ Not Started |
+| 6A | **Void World Type** | 🔄 In Progress |
+| 6 | World Initialization | 🔄 Needs Revision |
 | 7 | Mob Spawning | ⬜ Not Started |
 | 8 | Configuration | ⬜ Not Started |
 | 9 | Block Post-Processing | ⬜ Not Started |
 | 10 | Multiplayer Support | ⬜ Not Started |
 | 11 | Performance & Disk | ⬜ Not Started |
-| 12 | Platform Code | ⬜ Not Started |
-| 13 | Polish & UX | ⬜ Not Started |
-| 14 | Testing | ⬜ Not Started |
+| 12 | Polish & UX | ⬜ Not Started |
+| 13 | Testing | ⬜ Not Started |
 
-*Phase 4 Note: Dynamic dimension creation falls back to overworld until mixins are added for full dynamic dimension support.
+> **Note:** Platform-specific code is integrated into each phase as needed, not deferred to a separate phase.
+> 
+> **⚠️ CRITICAL:** Phase 6A (Void World Type) is a prerequisite for the mod to function correctly. The overworld MUST use a void chunk generator; normal terrain generation breaks the chunk spawning mechanic.
+
+---
+
+## Appendix B: Fabric Client Logs (Phase 6A Debugging)
+
+> **Session Date:** 2026-02-01
+> 
+> **Test Scenario:** New world created with "Brightbronze Horizons" world type. Player spawns in void world. Expected behavior: 3×3 plains terrain visible at spawn. Actual behavior: Pure void, no terrain visible.
+
+[01:28:18] [Server thread/INFO] (brightbronze_horizons) Server started, checking starting area initialization...
+[01:28:18] [Server thread/INFO] (brightbronze_horizons) Initializing starting area at chunk (0, 0) near spawn (8, 64, 8)
+[01:28:18] [Server thread/INFO] (brightbronze_horizons) Using starting biome: minecraft:plains
+[01:28:18] [Server thread/INFO] (brightbronze_horizons) Creating source dimension for biome: minecraft:plains
+[01:28:18] [Server thread/INFO] (brightbronze_horizons) Created dynamic dimension: brightbronze_horizons:source/minecraft/plain 
+[01:28:18] [Server thread/INFO] (brightbronze_horizons) Successfully created source dimension for biome: minecraft:plains
+[01:28:18] [Server thread/INFO] (brightbronze_horizons) Starting area initialized: 9 of 9 chunks copied successfully
+[01:28:18] [Server thread/INFO] (brightbronze_horizons) Set spawn point to (8, 64, 8)
+[01:28:19] [Server thread/INFO] (Minecraft) Loading 0 chunks for player spawn...
+[01:28:19] [Server thread/INFO] (Minecraft) Preparing spawn area: 16%
+[01:28:19] [Server thread/INFO] (Minecraft) Time elapsed: 2180 ms
+[01:28:19] [Server thread/INFO] (Minecraft) Player175[local:E:68d5ad3d] logged in with entity id 1 at (8.5, -63.0, 8.5)
+[01:28:19] [Server thread/INFO] (Minecraft) Player175 joined the game
+[01:28:19] [Server thread/INFO] (Minecraft) Changing view distance to 12, from 10
+[01:28:19] [Server thread/INFO] (Minecraft) Changing simulation distance to 12, from 0
+[01:28:19] [Render thread/INFO] (Minecraft) Resizing Dynamic Transforms UBO, capacity limit of 2 reached during a single frame. New capacity will be 4.
+[01:28:19] [Render thread/INFO] (Minecraft) Resizing Dynamic Transforms UBO, capacity limit of 4 reached during a single frame. New capacity will be 8.
+[01:28:19] [Render thread/INFO] (Minecraft) Loaded 2 advancements
+[01:28:19] [Render thread/INFO] (Minecraft) Resizing Dynamic Transforms UBO, capacity limit of 8 reached during a single frame. New capacity will be 16.
+[01:28:25] [Server thread/INFO] (Minecraft) Player175 fell out of the world
+[01:28:25] [Render thread/INFO] (Minecraft) [System] [CHAT] Player175 fell out of the world
+[01:28:32] [Server thread/INFO] (Minecraft) Player175 fell out of the world
+[01:28:32] [Render thread/INFO] (Minecraft) [System] [CHAT] Player175 fell out of the world
+[01:28:52] [Server thread/INFO] (Minecraft) Saving and pausing game...
+[01:28:52] [Server thread/INFO] (Minecraft) Saving chunks for level 'ServerLevel[New World]'/minecraft:overworld
+[01:28:52] [Server thread/INFO] (Minecraft) Saving chunks for level 'ServerLevel[New World]'/minecraft:the_nether
+[01:28:52] [Server thread/INFO] (Minecraft) Saving chunks for level 'ServerLevel[New World]'/minecraft:the_end
+[01:28:52] [Server thread/INFO] (Minecraft) Saving chunks for level 'ServerLevel[New World]'/brightbronze_horizons:source/minecraft/plains
+[01:28:53] [Server thread/INFO] (Minecraft) Player175 lost connection: Disconnected
+[01:28:53] [Server thread/INFO] (Minecraft) Player175 left the game

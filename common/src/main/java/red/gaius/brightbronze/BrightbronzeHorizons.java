@@ -1,5 +1,6 @@
 package red.gaius.brightbronze;
 
+import dev.architectury.event.events.common.LifecycleEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import red.gaius.brightbronze.registry.ModArmorMaterials;
@@ -8,6 +9,7 @@ import red.gaius.brightbronze.registry.ModBlocks;
 import red.gaius.brightbronze.registry.ModCreativeTabs;
 import red.gaius.brightbronze.registry.ModItems;
 import red.gaius.brightbronze.registry.ModWorldGen;
+import red.gaius.brightbronze.world.StartingAreaManager;
 
 /**
  * Main mod class for Brightbronze Horizons.
@@ -38,7 +40,22 @@ public final class BrightbronzeHorizons {
         
         // Register world generation components (chunk generators)
         ModWorldGen.register();
+        
+        // Register server lifecycle events
+        registerServerEvents();
 
         LOGGER.info("Brightbronze Horizons initialized!");
+    }
+    
+    /**
+     * Registers server lifecycle event handlers.
+     */
+    private static void registerServerEvents() {
+        // Initialize the starting area when the server is fully started
+        // This ensures all dimensions and world data are available
+        LifecycleEvent.SERVER_STARTED.register(server -> {
+            LOGGER.info("Server started, checking starting area initialization...");
+            StartingAreaManager.checkAndInitialize(server);
+        });
     }
 }

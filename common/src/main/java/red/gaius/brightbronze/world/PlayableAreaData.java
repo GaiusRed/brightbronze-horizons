@@ -1,0 +1,274 @@
+package red.gaius.brightbronze.world;
+
+import com.mojang.serialization.Codec;
+import com.mojang.serialization.codecs.RecordCodecBuilder;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.util.datafix.DataFixTypes;
+import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.saveddata.SavedData;
+import net.minecraft.world.level.saveddata.SavedDataType;
+import red.gaius.brightbronze.BrightbronzeHorizons;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
+/**
+ * Server-level saved data that tracks which chunks are part of the playable area.
+ * 
+ * <p>This data persists across world saves/loads and tracks:
+ * <ul>
+ *   <li>All spawned chunks (the "playable area")</li>
+ *   <li>Frontier chunks (chunks at the edge that can be expanded)</li>
+ *   <li>Whether the starting area has been initialized</li>
+ * </ul>
+ * 
+ * <p>The playable area starts as a 3×3 chunk region and expands when players
+ * use chunk spawners. New chunks must be adjacent to existing playable chunks.
+ * 
+ * <p>MC 1.21 uses Codecs for SavedData serialization.
+ */
+public class PlayableAreaData extends SavedData {
+
+    private static final String DATA_NAME = "brightbronze_horizons_playable_area";
+    
+    /** Codec for ChunkPos (stored as int pair) */
+    private static final Codec<ChunkPos> CHUNK_POS_CODEC = RecordCodecBuilder.create(instance ->
+        instance.group(
+            Codec.INT.fieldOf("x").forGetter(pos -> pos.x),
+            Codec.INT.fieldOf("z").forGetter(pos -> pos.z)
+        ).apply(instance, ChunkPos::new)
+    );
+    
+    /** Codec for PlayableAreaData serialization */
+    public static final Codec<PlayableAreaData> CODEC = RecordCodecBuilder.create(instance ->
+        instance.group(
+            Codec.BOOL.fieldOf("initialized").forGetter(data -> data.initialized),
+            CHUNK_POS_CODEC.fieldOf("spawn_chunk").forGetter(data -> data.spawnChunk),
+            CHUNK_POS_CODEC.listOf().fieldOf("spawned_chunks").forGetter(data -> new ArrayList<>(data.spawnedChunks))
+        ).apply(instance, PlayableAreaData::new)
+    );
+    
+    /** SavedDataType for MC 1.21 data storage API */
+    public static final SavedDataType<PlayableAreaData> TYPE = new SavedDataType<>(
+        DATA_NAME,
+        PlayableAreaData::new,
+        CODEC,
+        DataFixTypes.LEVEL
+    );
+    
+    /** All chunks that are part of the playable area */
+    private final Set<ChunkPos> spawnedChunks;
+    
+    /** Whether the starting area has been initialized */
+    private boolean initialized;
+    
+    /** The center chunk of the starting 3×3 area (world spawn chunk) */
+    private ChunkPos spawnChunk;
+
+    /**
+     * Creates a new empty PlayableAreaData.
+     * Used for new worlds.
+     */
+    public PlayableAreaData() {
+        this.spawnedChunks = new HashSet<>();
+        this.initialized = false;
+        this.spawnChunk = new ChunkPos(0, 0);
+    }
+    
+    /**
+     * Creates PlayableAreaData from loaded data.
+     * Used by the Codec during deserialization.
+     */
+    private PlayableAreaData(boolean initialized, ChunkPos spawnChunk, List<ChunkPos> spawnedChunks) {
+        this.initialized = initialized;
+        this.spawnChunk = spawnChunk;
+        this.spawnedChunks = new HashSet<>(spawnedChunks);
+        
+        BrightbronzeHorizons.LOGGER.debug(
+            "Loaded PlayableAreaData: {} chunks, initialized={}",
+            this.spawnedChunks.size(), this.initialized
+        );
+    }
+
+    /**
+     * Gets the PlayableAreaData for the given server.
+     * Creates new data if none exists.
+     * 
+     * @param server The Minecraft server
+     * @return The playable area data
+     */
+    public static PlayableAreaData get(MinecraftServer server) {
+        ServerLevel overworld = server.getLevel(Level.OVERWORLD);
+        if (overworld == null) {
+            throw new IllegalStateException("Overworld not loaded");
+        }
+        
+        return overworld.getDataStorage().computeIfAbsent(TYPE);
+    }
+
+    /**
+     * @return Whether the starting area has been initialized
+     */
+    public boolean isInitialized() {
+        return initialized;
+    }
+
+    /**
+     * Marks the starting area as initialized.
+     * Should be called after the initial 3×3 area is set up.
+     * 
+     * @param spawnChunk The center chunk of the starting area
+     */
+    public void setInitialized(ChunkPos spawnChunk) {
+        this.initialized = true;
+        this.spawnChunk = spawnChunk;
+        setDirty();
+    }
+
+    /**
+     * @return The center chunk of the starting area
+     */
+    public ChunkPos getSpawnChunk() {
+        return spawnChunk;
+    }
+
+    /**
+     * @return An unmodifiable view of all spawned chunks
+     */
+    public Set<ChunkPos> getSpawnedChunks() {
+        return Collections.unmodifiableSet(spawnedChunks);
+    }
+
+    /**
+     * @return The number of chunks in the playable area
+     */
+    public int getChunkCount() {
+        return spawnedChunks.size();
+    }
+
+    /**
+     * Checks if a chunk is part of the playable area.
+     * 
+     * @param pos The chunk position to check
+     * @return true if the chunk is playable
+     */
+    public boolean isChunkPlayable(ChunkPos pos) {
+        return spawnedChunks.contains(pos);
+    }
+
+    /**
+     * Checks if a chunk is at the frontier (edge of playable area).
+     * A frontier chunk is a playable chunk that has at least one
+     * non-playable adjacent chunk.
+     * 
+     * @param pos The chunk position to check
+     * @return true if the chunk is at the frontier
+     */
+    public boolean isFrontierChunk(ChunkPos pos) {
+        if (!isChunkPlayable(pos)) {
+            return false;
+        }
+        
+        // Check all 4 adjacent chunks (no diagonals)
+        return !isChunkPlayable(new ChunkPos(pos.x - 1, pos.z)) ||
+               !isChunkPlayable(new ChunkPos(pos.x + 1, pos.z)) ||
+               !isChunkPlayable(new ChunkPos(pos.x, pos.z - 1)) ||
+               !isChunkPlayable(new ChunkPos(pos.x, pos.z + 1));
+    }
+
+    /**
+     * Checks if a chunk can be expanded into (is adjacent to playable area).
+     * 
+     * @param pos The chunk position to check
+     * @return true if the chunk can be expanded into
+     */
+    public boolean canExpandInto(ChunkPos pos) {
+        // Can't expand into already playable chunks
+        if (isChunkPlayable(pos)) {
+            return false;
+        }
+        
+        // Must be adjacent to at least one playable chunk
+        return isChunkPlayable(new ChunkPos(pos.x - 1, pos.z)) ||
+               isChunkPlayable(new ChunkPos(pos.x + 1, pos.z)) ||
+               isChunkPlayable(new ChunkPos(pos.x, pos.z - 1)) ||
+               isChunkPlayable(new ChunkPos(pos.x, pos.z + 1));
+    }
+
+    /**
+     * Adds a chunk to the playable area.
+     * 
+     * @param pos The chunk position to add
+     * @return true if the chunk was added, false if already present
+     */
+    public boolean addChunk(ChunkPos pos) {
+        boolean added = spawnedChunks.add(pos);
+        if (added) {
+            setDirty();
+            BrightbronzeHorizons.LOGGER.debug(
+                "Added chunk ({}, {}) to playable area. Total: {}",
+                pos.x, pos.z, spawnedChunks.size()
+            );
+        }
+        return added;
+    }
+
+    /**
+     * Adds multiple chunks to the playable area (for initial setup).
+     * 
+     * @param chunks The chunk positions to add
+     */
+    public void addChunks(Iterable<ChunkPos> chunks) {
+        for (ChunkPos pos : chunks) {
+            spawnedChunks.add(pos);
+        }
+        setDirty();
+    }
+
+    /**
+     * Gets all frontier chunks (chunks at the edge of the playable area).
+     * 
+     * @return Set of frontier chunk positions
+     */
+    public Set<ChunkPos> getFrontierChunks() {
+        Set<ChunkPos> frontier = new HashSet<>();
+        for (ChunkPos pos : spawnedChunks) {
+            if (isFrontierChunk(pos)) {
+                frontier.add(pos);
+            }
+        }
+        return frontier;
+    }
+
+    /**
+     * Gets all chunks that can be expanded into (adjacent to playable area but not playable).
+     * 
+     * @return Set of expandable chunk positions
+     */
+    public Set<ChunkPos> getExpandableChunks() {
+        Set<ChunkPos> expandable = new HashSet<>();
+        
+        for (ChunkPos pos : spawnedChunks) {
+            // Check all 4 adjacent positions
+            ChunkPos[] adjacent = {
+                new ChunkPos(pos.x - 1, pos.z),
+                new ChunkPos(pos.x + 1, pos.z),
+                new ChunkPos(pos.x, pos.z - 1),
+                new ChunkPos(pos.x, pos.z + 1)
+            };
+            
+            for (ChunkPos adj : adjacent) {
+                if (!isChunkPlayable(adj)) {
+                    expandable.add(adj);
+                }
+            }
+        }
+        
+        return expandable;
+    }
+}

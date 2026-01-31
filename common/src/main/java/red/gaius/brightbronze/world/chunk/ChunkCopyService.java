@@ -95,6 +95,9 @@ public class ChunkCopyService {
 
             // Mark target chunk as needing save
             targetChunk.markUnsaved();
+            
+            // Force chunk lighting and neighbor updates
+            targetLevel.getChunkSource().getLightEngine().checkBlock(targetChunkPos.getMiddleBlockPosition(0));
 
             BrightbronzeHorizons.LOGGER.debug("Successfully copied chunk {} -> {}", sourceChunkPos, targetChunkPos);
             return true;
@@ -164,16 +167,16 @@ public class ChunkCopyService {
     /**
      * Checks if a block state should be replaced during chunk copy.
      * 
+     * <p>For starting area initialization and chunk spawning, we want to completely
+     * overwrite the destination chunk with source content. This ensures the spawned
+     * terrain matches the source dimension exactly.
+     * 
      * @param state The existing block state
-     * @return true if this block can be overwritten
+     * @return true if this block can be overwritten (always true for complete copy)
      */
     private static boolean isReplaceableBlock(BlockState state) {
-        Block block = state.getBlock();
-        return state.isAir() 
-                || block instanceof LiquidBlock
-                || block == Blocks.BEDROCK
-                || block == Blocks.BARRIER
-                || block == Blocks.STRUCTURE_VOID;
+        // Always replace - we want complete chunk overwrites for the chunk spawning mechanic
+        return true;
     }
 
     /**
