@@ -1,17 +1,15 @@
 modLoader = "javafml"
 loaderVersion = "[10,)"
-#issueTrackerURL = ""
-license = "Insert License Here"
+license = "MIT"
 
 [[mods]]
 modId = "brightbronze_horizons"
 version = "${version}"
 displayName = "Brightbronze Horizons"
-authors = "Me!"
+authors = "Gaius"
 description = '''
-This is an example description! Tell everyone what your mod is about!
+A chunk-expansion mod where players expand their playable area by spawning terrain chunks from biome-coherent source dimensions.
 '''
-#logoFile = ""
 
 [[dependencies.brightbronze_horizons]]
 modId = "neoforge"
