@@ -9,6 +9,8 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import red.gaius.brightbronze.BrightbronzeHorizons;
+import red.gaius.brightbronze.block.ChunkSpawnerBlock;
+import red.gaius.brightbronze.world.ChunkSpawnerTier;
 
 /**
  * Registry for all mod blocks.
@@ -19,6 +21,13 @@ import red.gaius.brightbronze.BrightbronzeHorizons;
 public final class ModBlocks {
     public static final DeferredRegister<Block> BLOCKS = DeferredRegister.create(
             BrightbronzeHorizons.MOD_ID, Registries.BLOCK);
+
+    // ===== Helper to create ResourceKey =====
+    
+    private static ResourceKey<Block> key(String name) {
+        return ResourceKey.create(Registries.BLOCK, 
+                ResourceLocation.fromNamespaceAndPath(BrightbronzeHorizons.MOD_ID, name));
+    }
 
     // ===== Brightbronze Material =====
 
@@ -33,7 +42,40 @@ public final class ModBlocks {
                     .requiresCorrectToolForDrops()
                     .sound(SoundType.METAL)));
 
-    // ===== Chunk Spawners (to be added in Phase 3) =====
+    // ===== Chunk Spawners =====
+    
+    /**
+     * Creates standard properties for chunk spawner blocks.
+     * All spawners share the same physical properties.
+     */
+    private static BlockBehaviour.Properties spawnerProperties(String name) {
+        return BlockBehaviour.Properties.of()
+                .setId(key(name))
+                .strength(3.0f, 6.0f)
+                .requiresCorrectToolForDrops()
+                .sound(SoundType.METAL)
+                .lightLevel(state -> 7); // Slight glow to indicate magical nature
+    }
+
+    public static final RegistrySupplier<Block> COAL_CHUNK_SPAWNER = BLOCKS.register(
+            "coal_chunk_spawner",
+            () -> new ChunkSpawnerBlock(spawnerProperties("coal_chunk_spawner"), ChunkSpawnerTier.COAL));
+
+    public static final RegistrySupplier<Block> IRON_CHUNK_SPAWNER = BLOCKS.register(
+            "iron_chunk_spawner",
+            () -> new ChunkSpawnerBlock(spawnerProperties("iron_chunk_spawner"), ChunkSpawnerTier.IRON));
+
+    public static final RegistrySupplier<Block> GOLD_CHUNK_SPAWNER = BLOCKS.register(
+            "gold_chunk_spawner",
+            () -> new ChunkSpawnerBlock(spawnerProperties("gold_chunk_spawner"), ChunkSpawnerTier.GOLD));
+
+    public static final RegistrySupplier<Block> EMERALD_CHUNK_SPAWNER = BLOCKS.register(
+            "emerald_chunk_spawner",
+            () -> new ChunkSpawnerBlock(spawnerProperties("emerald_chunk_spawner"), ChunkSpawnerTier.EMERALD));
+
+    public static final RegistrySupplier<Block> DIAMOND_CHUNK_SPAWNER = BLOCKS.register(
+            "diamond_chunk_spawner",
+            () -> new ChunkSpawnerBlock(spawnerProperties("diamond_chunk_spawner"), ChunkSpawnerTier.DIAMOND));
 
     private ModBlocks() {
     }

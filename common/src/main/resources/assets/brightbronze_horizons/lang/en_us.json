@@ -2,6 +2,11 @@
   "itemGroup.brightbronze_horizons.main": "Brightbronze Horizons",
   
   "block.brightbronze_horizons.brightbronze_block": "Block of Brightbronze",
+  "block.brightbronze_horizons.coal_chunk_spawner": "Coal Chunk Spawner",
+  "block.brightbronze_horizons.iron_chunk_spawner": "Iron Chunk Spawner",
+  "block.brightbronze_horizons.gold_chunk_spawner": "Gold Chunk Spawner",
+  "block.brightbronze_horizons.emerald_chunk_spawner": "Emerald Chunk Spawner",
+  "block.brightbronze_horizons.diamond_chunk_spawner": "Diamond Chunk Spawner",
   
   "item.brightbronze_horizons.brightbronze_amalgam": "Brightbronze Amalgam",
   "item.brightbronze_horizons.brightbronze_ingot": "Brightbronze Ingot",
@@ -16,5 +21,10 @@
   "item.brightbronze_horizons.brightbronze_helmet": "Brightbronze Helmet",
   "item.brightbronze_horizons.brightbronze_chestplate": "Brightbronze Chestplate",
   "item.brightbronze_horizons.brightbronze_leggings": "Brightbronze Leggings",
-  "item.brightbronze_horizons.brightbronze_boots": "Brightbronze Boots"
+  "item.brightbronze_horizons.brightbronze_boots": "Brightbronze Boots",
+  
+  "message.brightbronze_horizons.spawner.not_at_edge": "Chunk Spawner must be placed at the edge of a chunk!",
+  "message.brightbronze_horizons.spawner.success": "Spawned %s tier chunk at (%d, %d)",
+  "message.brightbronze_horizons.spawner.failed": "Failed to spawn chunk. No eligible biomes in this tier.",
+  "message.brightbronze_horizons.spawner.not_implemented": "Chunk spawning not yet implemented - Phase 3 in progress!"
 }

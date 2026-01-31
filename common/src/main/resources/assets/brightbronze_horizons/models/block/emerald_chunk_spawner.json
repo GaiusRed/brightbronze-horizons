@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:block/cube_all",
+  "textures": {
+    "all": "brightbronze_horizons:block/emerald_chunk_spawner"
+  }
+}

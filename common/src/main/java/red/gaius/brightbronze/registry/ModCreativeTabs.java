@@ -55,6 +55,11 @@ public final class ModCreativeTabs {
         output.accept(ModArmorMaterials.BRIGHTBRONZE_LEGGINGS.get());
         output.accept(ModArmorMaterials.BRIGHTBRONZE_BOOTS.get());
 
-        // Chunk Spawners (to be added in Phase 3)
+        // Chunk Spawners
+        output.accept(ModItems.COAL_CHUNK_SPAWNER_ITEM.get());
+        output.accept(ModItems.IRON_CHUNK_SPAWNER_ITEM.get());
+        output.accept(ModItems.GOLD_CHUNK_SPAWNER_ITEM.get());
+        output.accept(ModItems.EMERALD_CHUNK_SPAWNER_ITEM.get());
+        output.accept(ModItems.DIAMOND_CHUNK_SPAWNER_ITEM.get());
     }
 }

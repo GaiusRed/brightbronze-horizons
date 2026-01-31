@@ -1,0 +1,23 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "AAA",
+    "ABA",
+    "ACA"
+  ],
+  "key": {
+    "A": {
+      "item": "brightbronze_horizons:brightbronze_ingot"
+    },
+    "B": {
+      "item": "minecraft:diamond_block"
+    },
+    "C": {
+      "item": "minecraft:campfire"
+    }
+  },
+  "result": {
+    "id": "brightbronze_horizons:diamond_chunk_spawner",
+    "count": 1
+  }
+}

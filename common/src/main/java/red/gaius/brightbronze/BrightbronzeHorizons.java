@@ -3,6 +3,7 @@ package red.gaius.brightbronze;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import red.gaius.brightbronze.registry.ModArmorMaterials;
+import red.gaius.brightbronze.registry.ModBlockEntities;
 import red.gaius.brightbronze.registry.ModBlocks;
 import red.gaius.brightbronze.registry.ModCreativeTabs;
 import red.gaius.brightbronze.registry.ModItems;
@@ -32,6 +33,7 @@ public final class BrightbronzeHorizons {
         ModArmorMaterials.register();
         
         ModItems.register();
+        ModBlockEntities.register();
         ModCreativeTabs.register();
         
         // Register world generation components (chunk generators)

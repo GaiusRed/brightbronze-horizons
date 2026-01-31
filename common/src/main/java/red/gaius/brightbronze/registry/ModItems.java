@@ -118,7 +118,42 @@ public final class ModItems {
 
     // ===== Brightbronze Armor (defined in ModArmorMaterials) =====
 
-    // ===== Chunk Spawners (to be added in Phase 3) =====
+    // ===== Chunk Spawner Block Items =====
+
+    public static final RegistrySupplier<Item> COAL_CHUNK_SPAWNER_ITEM = ITEMS.register(
+            "coal_chunk_spawner",
+            () -> new BlockItem(ModBlocks.COAL_CHUNK_SPAWNER.get(),
+                    new Item.Properties()
+                            .setId(key("coal_chunk_spawner"))
+                            .arch$tab(CreativeModeTabs.FUNCTIONAL_BLOCKS)));
+
+    public static final RegistrySupplier<Item> IRON_CHUNK_SPAWNER_ITEM = ITEMS.register(
+            "iron_chunk_spawner",
+            () -> new BlockItem(ModBlocks.IRON_CHUNK_SPAWNER.get(),
+                    new Item.Properties()
+                            .setId(key("iron_chunk_spawner"))
+                            .arch$tab(CreativeModeTabs.FUNCTIONAL_BLOCKS)));
+
+    public static final RegistrySupplier<Item> GOLD_CHUNK_SPAWNER_ITEM = ITEMS.register(
+            "gold_chunk_spawner",
+            () -> new BlockItem(ModBlocks.GOLD_CHUNK_SPAWNER.get(),
+                    new Item.Properties()
+                            .setId(key("gold_chunk_spawner"))
+                            .arch$tab(CreativeModeTabs.FUNCTIONAL_BLOCKS)));
+
+    public static final RegistrySupplier<Item> EMERALD_CHUNK_SPAWNER_ITEM = ITEMS.register(
+            "emerald_chunk_spawner",
+            () -> new BlockItem(ModBlocks.EMERALD_CHUNK_SPAWNER.get(),
+                    new Item.Properties()
+                            .setId(key("emerald_chunk_spawner"))
+                            .arch$tab(CreativeModeTabs.FUNCTIONAL_BLOCKS)));
+
+    public static final RegistrySupplier<Item> DIAMOND_CHUNK_SPAWNER_ITEM = ITEMS.register(
+            "diamond_chunk_spawner",
+            () -> new BlockItem(ModBlocks.DIAMOND_CHUNK_SPAWNER.get(),
+                    new Item.Properties()
+                            .setId(key("diamond_chunk_spawner"))
+                            .arch$tab(CreativeModeTabs.FUNCTIONAL_BLOCKS)));
 
     private ModItems() {
     }
