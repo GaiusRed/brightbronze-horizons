@@ -6,6 +6,7 @@ import red.gaius.brightbronze.registry.ModArmorMaterials;
 import red.gaius.brightbronze.registry.ModBlocks;
 import red.gaius.brightbronze.registry.ModCreativeTabs;
 import red.gaius.brightbronze.registry.ModItems;
+import red.gaius.brightbronze.registry.ModWorldGen;
 
 /**
  * Main mod class for Brightbronze Horizons.
@@ -32,6 +33,9 @@ public final class BrightbronzeHorizons {
         
         ModItems.register();
         ModCreativeTabs.register();
+        
+        // Register world generation components (chunk generators)
+        ModWorldGen.register();
 
         LOGGER.info("Brightbronze Horizons initialized!");
     }
