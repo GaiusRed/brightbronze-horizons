@@ -3,6 +3,7 @@ package red.gaius.brightbronze.registry;
 import dev.architectury.registry.registries.DeferredRegister;
 import dev.architectury.registry.registries.RegistrySupplier;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.SoundType;
@@ -11,6 +12,9 @@ import red.gaius.brightbronze.BrightbronzeHorizons;
 
 /**
  * Registry for all mod blocks.
+ * 
+ * In MC 1.21.10+, blocks require their ID to be set on the properties BEFORE construction.
+ * This is done via BlockBehaviour.Properties.setId(ResourceKey).
  */
 public final class ModBlocks {
     public static final DeferredRegister<Block> BLOCKS = DeferredRegister.create(
@@ -18,9 +22,13 @@ public final class ModBlocks {
 
     // ===== Brightbronze Material =====
 
+    private static final ResourceLocation BRIGHTBRONZE_BLOCK_ID = 
+            ResourceLocation.fromNamespaceAndPath(BrightbronzeHorizons.MOD_ID, "brightbronze_block");
+    
     public static final RegistrySupplier<Block> BRIGHTBRONZE_BLOCK = BLOCKS.register(
-            ResourceLocation.fromNamespaceAndPath(BrightbronzeHorizons.MOD_ID, "brightbronze_block"),
+            BRIGHTBRONZE_BLOCK_ID,
             () -> new Block(BlockBehaviour.Properties.of()
+                    .setId(ResourceKey.create(Registries.BLOCK, BRIGHTBRONZE_BLOCK_ID))
                     .strength(5.0f, 6.0f)
                     .requiresCorrectToolForDrops()
                     .sound(SoundType.METAL)));

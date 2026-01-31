@@ -1,0 +1,16 @@
+{
+    "type": "minecraft:crafting_shaped",
+    "category": "building",
+    "pattern": [
+        "III",
+        "III",
+        "III"
+    ],
+    "key": {
+        "I": "brightbronze_horizons:brightbronze_ingot"
+    },
+    "result": {
+        "id": "brightbronze_horizons:brightbronze_block",
+        "count": 1
+    }
+}

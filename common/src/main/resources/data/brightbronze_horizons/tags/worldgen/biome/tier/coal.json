@@ -1,0 +1,23 @@
+{
+    "values": [
+        "minecraft:plains",
+        "minecraft:sunflower_plains",
+        "minecraft:forest",
+        "minecraft:flower_forest",
+        "minecraft:birch_forest",
+        "minecraft:old_growth_birch_forest",
+        "minecraft:taiga",
+        "minecraft:old_growth_pine_taiga",
+        "minecraft:old_growth_spruce_taiga",
+        "minecraft:snowy_plains",
+        "minecraft:snowy_taiga",
+        "minecraft:savanna",
+        "minecraft:savanna_plateau",
+        "minecraft:desert",
+        "minecraft:meadow",
+        "minecraft:beach",
+        "minecraft:snowy_beach",
+        "minecraft:river",
+        "minecraft:frozen_river"
+    ]
+}

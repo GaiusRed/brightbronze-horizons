@@ -22,9 +22,14 @@ public final class BrightbronzeHorizons {
     public static void init() {
         LOGGER.info("Initializing Brightbronze Horizons...");
 
-        // Register all mod content (order matters: armor materials before items that use them)
-        ModArmorMaterials.register();
+        // Register all mod content
+        // Order: Blocks first (for BlockItems), then Items (which includes armor from ModArmorMaterials)
         ModBlocks.register();
+        
+        // Force class loading of ModArmorMaterials so armor items are added to ModItems.ITEMS
+        // before we call ModItems.register()
+        ModArmorMaterials.register();
+        
         ModItems.register();
         ModCreativeTabs.register();
 

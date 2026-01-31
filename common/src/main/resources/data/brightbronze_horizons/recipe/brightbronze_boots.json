@@ -1,0 +1,15 @@
+{
+    "type": "minecraft:crafting_shaped",
+    "category": "equipment",
+    "pattern": [
+        "X X",
+        "X X"
+    ],
+    "key": {
+        "X": "brightbronze_horizons:brightbronze_ingot"
+    },
+    "result": {
+        "id": "brightbronze_horizons:brightbronze_boots",
+        "count": 1
+    }
+}

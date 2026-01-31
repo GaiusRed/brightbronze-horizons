@@ -3,10 +3,12 @@ package red.gaius.brightbronze.registry;
 import dev.architectury.registry.registries.DeferredRegister;
 import dev.architectury.registry.registries.RegistrySupplier;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.tags.ItemTags;
 import net.minecraft.world.item.BlockItem;
+import net.minecraft.world.item.CreativeModeTabs;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ToolMaterial;
 import red.gaius.brightbronze.BrightbronzeHorizons;
@@ -14,32 +16,50 @@ import red.gaius.brightbronze.BrightbronzeHorizons;
 /**
  * Registry for all mod items.
  * 
- * In MC 1.21.10+, tools are created via Item.Properties methods like
- * sword(), pickaxe(), axe(), shovel(), hoe() instead of specific tool item classes.
+ * In MC 1.21.10+, items require their ID to be set on the properties BEFORE construction.
+ * This is done via Item.Properties.setId(ResourceKey).
+ * 
+ * Tools are created via Item.Properties methods like sword(), pickaxe(), etc.
  */
 public final class ModItems {
     public static final DeferredRegister<Item> ITEMS = DeferredRegister.create(
             BrightbronzeHorizons.MOD_ID, Registries.ITEM);
 
+    // ===== Helper method to create ResourceKey =====
+    
+    private static ResourceKey<Item> key(String name) {
+        return ResourceKey.create(Registries.ITEM, 
+                ResourceLocation.fromNamespaceAndPath(BrightbronzeHorizons.MOD_ID, name));
+    }
+
     // ===== Brightbronze Materials =====
 
     public static final RegistrySupplier<Item> BRIGHTBRONZE_AMALGAM = ITEMS.register(
-            ResourceLocation.fromNamespaceAndPath(BrightbronzeHorizons.MOD_ID, "brightbronze_amalgam"),
-            () -> new Item(new Item.Properties()));
+            "brightbronze_amalgam",
+            () -> new Item(new Item.Properties()
+                    .setId(key("brightbronze_amalgam"))
+                    .arch$tab(CreativeModeTabs.INGREDIENTS)));
 
     public static final RegistrySupplier<Item> BRIGHTBRONZE_INGOT = ITEMS.register(
-            ResourceLocation.fromNamespaceAndPath(BrightbronzeHorizons.MOD_ID, "brightbronze_ingot"),
-            () -> new Item(new Item.Properties()));
+            "brightbronze_ingot",
+            () -> new Item(new Item.Properties()
+                    .setId(key("brightbronze_ingot"))
+                    .arch$tab(CreativeModeTabs.INGREDIENTS)));
 
     public static final RegistrySupplier<Item> BRIGHTBRONZE_NUGGET = ITEMS.register(
-            ResourceLocation.fromNamespaceAndPath(BrightbronzeHorizons.MOD_ID, "brightbronze_nugget"),
-            () -> new Item(new Item.Properties()));
+            "brightbronze_nugget",
+            () -> new Item(new Item.Properties()
+                    .setId(key("brightbronze_nugget"))
+                    .arch$tab(CreativeModeTabs.INGREDIENTS)));
 
     // ===== Brightbronze Block Item =====
 
     public static final RegistrySupplier<Item> BRIGHTBRONZE_BLOCK_ITEM = ITEMS.register(
-            ResourceLocation.fromNamespaceAndPath(BrightbronzeHorizons.MOD_ID, "brightbronze_block"),
-            () -> new BlockItem(ModBlocks.BRIGHTBRONZE_BLOCK.get(), new Item.Properties()));
+            "brightbronze_block",
+            () -> new BlockItem(ModBlocks.BRIGHTBRONZE_BLOCK.get(), 
+                    new Item.Properties()
+                            .setId(key("brightbronze_block"))
+                            .arch$tab(CreativeModeTabs.BUILDING_BLOCKS)));
 
     // ===== Brightbronze Tool Material (1.21.10 API) =====
 
@@ -62,28 +82,38 @@ public final class ModItems {
     // ===== Brightbronze Tools (1.21.10+ API using Item.Properties) =====
 
     public static final RegistrySupplier<Item> BRIGHTBRONZE_SWORD = ITEMS.register(
-            ResourceLocation.fromNamespaceAndPath(BrightbronzeHorizons.MOD_ID, "brightbronze_sword"),
+            "brightbronze_sword",
             () -> new Item(new Item.Properties()
+                    .setId(key("brightbronze_sword"))
+                    .arch$tab(CreativeModeTabs.COMBAT)
                     .sword(BRIGHTBRONZE_TOOL_MATERIAL, 3.0f, -2.4f)));
 
     public static final RegistrySupplier<Item> BRIGHTBRONZE_PICKAXE = ITEMS.register(
-            ResourceLocation.fromNamespaceAndPath(BrightbronzeHorizons.MOD_ID, "brightbronze_pickaxe"),
+            "brightbronze_pickaxe",
             () -> new Item(new Item.Properties()
+                    .setId(key("brightbronze_pickaxe"))
+                    .arch$tab(CreativeModeTabs.TOOLS_AND_UTILITIES)
                     .pickaxe(BRIGHTBRONZE_TOOL_MATERIAL, 1.0f, -2.8f)));
 
     public static final RegistrySupplier<Item> BRIGHTBRONZE_AXE = ITEMS.register(
-            ResourceLocation.fromNamespaceAndPath(BrightbronzeHorizons.MOD_ID, "brightbronze_axe"),
+            "brightbronze_axe",
             () -> new Item(new Item.Properties()
+                    .setId(key("brightbronze_axe"))
+                    .arch$tab(CreativeModeTabs.TOOLS_AND_UTILITIES)
                     .axe(BRIGHTBRONZE_TOOL_MATERIAL, 6.0f, -3.1f)));
 
     public static final RegistrySupplier<Item> BRIGHTBRONZE_SHOVEL = ITEMS.register(
-            ResourceLocation.fromNamespaceAndPath(BrightbronzeHorizons.MOD_ID, "brightbronze_shovel"),
+            "brightbronze_shovel",
             () -> new Item(new Item.Properties()
+                    .setId(key("brightbronze_shovel"))
+                    .arch$tab(CreativeModeTabs.TOOLS_AND_UTILITIES)
                     .shovel(BRIGHTBRONZE_TOOL_MATERIAL, 1.5f, -3.0f)));
 
     public static final RegistrySupplier<Item> BRIGHTBRONZE_HOE = ITEMS.register(
-            ResourceLocation.fromNamespaceAndPath(BrightbronzeHorizons.MOD_ID, "brightbronze_hoe"),
+            "brightbronze_hoe",
             () -> new Item(new Item.Properties()
+                    .setId(key("brightbronze_hoe"))
+                    .arch$tab(CreativeModeTabs.TOOLS_AND_UTILITIES)
                     .hoe(BRIGHTBRONZE_TOOL_MATERIAL, -2.0f, -1.0f)));
 
     // ===== Brightbronze Armor (defined in ModArmorMaterials) =====

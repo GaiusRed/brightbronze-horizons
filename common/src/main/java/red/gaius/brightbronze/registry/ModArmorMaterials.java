@@ -1,10 +1,12 @@
 package red.gaius.brightbronze.registry;
 
 import dev.architectury.registry.registries.RegistrySupplier;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.tags.ItemTags;
+import net.minecraft.world.item.CreativeModeTabs;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.equipment.ArmorMaterial;
 import net.minecraft.world.item.equipment.ArmorType;
@@ -19,8 +21,18 @@ import java.util.Map;
  * 
  * In MC 1.21.10+, armor is created via Item.Properties#humanoidArmor() method
  * instead of the old ArmorItem class.
+ * 
+ * Items require their ID to be set on the properties BEFORE construction
+ * via Item.Properties.setId(ResourceKey).
  */
 public final class ModArmorMaterials {
+
+    // ===== Helper method to create ResourceKey =====
+    
+    private static ResourceKey<Item> key(String name) {
+        return ResourceKey.create(Registries.ITEM, 
+                ResourceLocation.fromNamespaceAndPath(BrightbronzeHorizons.MOD_ID, name));
+    }
 
     /**
      * Base durability multiplier for Brightbronze armor.
@@ -63,26 +75,34 @@ public final class ModArmorMaterials {
     // In 1.21.10+, armor items are created with Item::new and humanoidArmor() property
 
     public static final RegistrySupplier<Item> BRIGHTBRONZE_HELMET = ModItems.ITEMS.register(
-            ResourceLocation.fromNamespaceAndPath(BrightbronzeHorizons.MOD_ID, "brightbronze_helmet"),
+            "brightbronze_helmet",
             () -> new Item(new Item.Properties()
+                    .setId(key("brightbronze_helmet"))
+                    .arch$tab(CreativeModeTabs.COMBAT)
                     .humanoidArmor(BRIGHTBRONZE, ArmorType.HELMET)
                     .durability(ArmorType.HELMET.getDurability(BASE_DURABILITY))));
 
     public static final RegistrySupplier<Item> BRIGHTBRONZE_CHESTPLATE = ModItems.ITEMS.register(
-            ResourceLocation.fromNamespaceAndPath(BrightbronzeHorizons.MOD_ID, "brightbronze_chestplate"),
+            "brightbronze_chestplate",
             () -> new Item(new Item.Properties()
+                    .setId(key("brightbronze_chestplate"))
+                    .arch$tab(CreativeModeTabs.COMBAT)
                     .humanoidArmor(BRIGHTBRONZE, ArmorType.CHESTPLATE)
                     .durability(ArmorType.CHESTPLATE.getDurability(BASE_DURABILITY))));
 
     public static final RegistrySupplier<Item> BRIGHTBRONZE_LEGGINGS = ModItems.ITEMS.register(
-            ResourceLocation.fromNamespaceAndPath(BrightbronzeHorizons.MOD_ID, "brightbronze_leggings"),
+            "brightbronze_leggings",
             () -> new Item(new Item.Properties()
+                    .setId(key("brightbronze_leggings"))
+                    .arch$tab(CreativeModeTabs.COMBAT)
                     .humanoidArmor(BRIGHTBRONZE, ArmorType.LEGGINGS)
                     .durability(ArmorType.LEGGINGS.getDurability(BASE_DURABILITY))));
 
     public static final RegistrySupplier<Item> BRIGHTBRONZE_BOOTS = ModItems.ITEMS.register(
-            ResourceLocation.fromNamespaceAndPath(BrightbronzeHorizons.MOD_ID, "brightbronze_boots"),
+            "brightbronze_boots",
             () -> new Item(new Item.Properties()
+                    .setId(key("brightbronze_boots"))
+                    .arch$tab(CreativeModeTabs.COMBAT)
                     .humanoidArmor(BRIGHTBRONZE, ArmorType.BOOTS)
                     .durability(ArmorType.BOOTS.getDurability(BASE_DURABILITY))));
 

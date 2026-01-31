@@ -1,0 +1,27 @@
+{
+    "values": [
+        "minecraft:dark_forest",
+        "minecraft:jungle",
+        "minecraft:sparse_jungle",
+        "minecraft:bamboo_jungle",
+        "minecraft:badlands",
+        "minecraft:eroded_badlands",
+        "minecraft:wooded_badlands",
+        "minecraft:swamp",
+        "minecraft:mangrove_swamp",
+        "minecraft:windswept_hills",
+        "minecraft:windswept_gravelly_hills",
+        "minecraft:windswept_forest",
+        "minecraft:stony_peaks",
+        "minecraft:jagged_peaks",
+        "minecraft:frozen_peaks",
+        "minecraft:snowy_slopes",
+        "minecraft:grove",
+        "minecraft:cherry_grove",
+        "minecraft:stony_shore",
+        "minecraft:mushroom_fields",
+        "minecraft:deep_dark",
+        "minecraft:dripstone_caves",
+        "minecraft:lush_caves"
+    ]
+}

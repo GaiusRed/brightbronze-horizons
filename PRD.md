@@ -445,6 +445,8 @@ None at this time.
 > **⚠️ LIVING DOCUMENT**: This appendix is a **checklist** that tracks implementation progress. It must be updated after every phase is completed. Mark items with `[x]` when done.
 >
 > **Git Workflow**: After completing each phase, the implementer will provide a suggested commit message. The user will then **manually run `git commit`** before proceeding to the next phase. Do not auto-commit.
+>
+> **🎮 RUNNABLE REQUIREMENT**: Every completed phase **MUST** result in a mod that launches successfully on **both Fabric and NeoForge**. If a phase adds items/blocks, placeholder textures and models must be included. Phases are not considered complete until `.\gradlew :fabric:runClient` and `.\gradlew :neoforge:runClient` both launch without crashes.
 
 ---
 
@@ -486,13 +488,23 @@ None at this time.
 - [x] Create `ModArmorMaterials.java` — Brightbronze armor material registration
 - [x] Create `ModDimensions.java` — Dimension type/key registration for source dimensions
 
+#### 1.3 Minimum Viable Assets (required for launch)
+- [x] Item models — JSON models for all registered items
+- [x] Block models — JSON models + blockstate for all registered blocks
+- [x] Placeholder textures — Simple colored textures for all items/blocks
+- [x] Language file — Basic `en_us.json` with item/block names
+- [x] **Verify Fabric launch** — `.\gradlew :fabric:runClient` starts without crash
+- [x] **Verify NeoForge launch** — `.\gradlew :neoforge:runClient` starts without crash
+
+> **Implementation Note (MC 1.21.10):** Blocks and Items require `Properties.setId(ResourceKey)` to be called BEFORE construction. This is a breaking API change from 1.21. Without this, NeoForge throws "Block id not set" / "Item id not set" during registration.
+
 **Suggested commit message:** `feat: Phase 1 — core infrastructure and registry setup`
 
 ---
 
 ### Phase 2: Brightbronze Material Line
 
-**Status:** 🔄 IN PROGRESS (Items registered, need recipes + assets)
+**Status:** ✅ COMPLETED
 
 #### 2.1 Items
 - [x] Brightbronze Amalgam — Basic item (crafted intermediate)
@@ -518,18 +530,23 @@ None at this time.
 - [x] Brightbronze Boots
 
 #### 2.5 Recipes (data pack JSON)
-- [ ] Brightbronze Amalgam recipe — Copper + Iron + Gold crafting
-- [ ] Brightbronze Ingot smelting — Amalgam → Ingot
-- [ ] Brightbronze Block crafting — 9 Ingots → Block
-- [ ] Brightbronze Ingot from Block — Block → 9 Ingots
-- [ ] Brightbronze Nugget conversions — 9 Nuggets ↔ Ingot
-- [ ] Tool recipes — Standard patterns with Brightbronze Ingots
-- [ ] Armor recipes — Standard patterns with Brightbronze Ingots
+- [x] Brightbronze Amalgam recipe — Copper + Iron + Gold crafting
+- [x] Brightbronze Ingot smelting — Amalgam → Ingot (furnace + blast furnace)
+- [x] Brightbronze Block crafting — 9 Ingots → Block
+- [x] Brightbronze Ingot from Block — Block → 9 Ingots
+- [x] Brightbronze Nugget conversions — 9 Nuggets ↔ Ingot
+- [x] Tool recipes — Standard patterns with Brightbronze Ingots
+- [x] Armor recipes — Standard patterns with Brightbronze Ingots
 
 #### 2.6 Assets
-- [ ] Textures — Item/block textures for all Brightbronze items
-- [ ] Models — Item/block models (JSON)
-- [ ] Language file — `en_us.json` translations
+- [x] Textures — Real textures from brightbronze-logistics reference project
+- [x] Models — Item/block models (JSON)
+- [x] Item model definitions — MC 1.21+ `items/` directory format
+- [x] Language file — `en_us.json` translations
+
+> **Implementation Note (MC 1.21.10):** 
+> - Recipe format changed in 1.21.2+: ingredients use strings (`"minecraft:item_id"`) not objects (`{"item": "minecraft:item_id"}`).
+> - MC 1.21+ requires an `items/` directory with item model definitions that point to models in `models/item/`.
 
 **Suggested commit message:** `feat: Phase 2 — Brightbronze material line (items, tools, armor, recipes)`
 
@@ -592,23 +609,25 @@ None at this time.
 
 ### Phase 5: Tier & Biome Pool System
 
-**Status:** Not Started
+**Status:** ✅ COMPLETED
 
 #### 5.1 Tier Enum/Registry
-- [ ] Create `ChunkSpawnerTier` enum — COAL, IRON, GOLD, EMERALD, DIAMOND
-- [ ] Tier properties — Biome pool key, mob spawn rules, etc.
+- [x] Create `ChunkSpawnerTier` enum — COAL, IRON, GOLD, EMERALD, DIAMOND
+- [x] Tier properties — Biome pool tag key, mob spawn rules (alwaysSpawnMobs)
 
 #### 5.2 Biome Pool Management
-- [ ] Create `BiomePoolManager` — Loads and manages biome pools per tier
-- [ ] Biome tags integration — Support biome tags for pool membership
-- [ ] Random biome selection — Weighted random selection from eligible pool
+- [x] Create `BiomePoolManager` — Loads and manages biome pools per tier
+- [x] Biome tags integration — Support biome tags for pool membership via `getTagOrEmpty()`
+- [x] Random biome selection — `selectRandomBiome()` from eligible pool
 
 #### 5.3 Default Biome Pool Data
-- [ ] Coal tier biomes tag — Plains, Forest, Birch Forest, Taiga, Snowy Plains, Savanna, Desert
-- [ ] Iron tier biomes tag — Dark Forest, Jungle variants, Badlands, Swamp, Mountains, etc.
-- [ ] Gold tier biomes tag — All vanilla Nether biomes
-- [ ] Diamond tier biomes tag — All vanilla End biomes
-- [ ] Emerald tier biomes — Empty by default (for modpacks)
+- [x] Coal tier biomes tag — Plains, Forest, Birch Forest, Taiga, Snowy Plains/Taiga, Savanna, Desert, Meadow, Beach, River variants
+- [x] Iron tier biomes tag — Dark Forest, Jungle variants, Badlands, Swamp, Mountains, Caves (Lush/Dripstone/Deep Dark)
+- [x] Gold tier biomes tag — All 5 vanilla Nether biomes
+- [x] Diamond tier biomes tag — All 5 vanilla End biomes
+- [x] Emerald tier biomes — Empty by default (for modpacks)
+
+> **Implementation Note (MC 1.21.10):** Use `biomeRegistry.getTagOrEmpty(tagKey)` instead of `biomeRegistry.holders()` for biome tag iteration.
 
 **Suggested commit message:** `feat: Phase 5 — tier enum, biome pool manager, and default biome tags`
 
@@ -815,11 +834,11 @@ None at this time.
 
 | Phase | Description | Status |
 |-------|-------------|--------|
-| 1 | Core Infrastructure | ⬜ Not Started |
-| 2 | Brightbronze Materials | ⬜ Not Started |
+| 1 | Core Infrastructure | ✅ Completed |
+| 2 | Brightbronze Materials | ✅ Completed |
 | 3 | Chunk Spawner System | ⬜ Not Started |
 | 4 | Source Dimensions | ⬜ Not Started |
-| 5 | Tier & Biome Pools | ⬜ Not Started |
+| 5 | Tier & Biome Pools | ✅ Completed |
 | 6 | World Initialization | ⬜ Not Started |
 | 7 | Mob Spawning | ⬜ Not Started |
 | 8 | Configuration | ⬜ Not Started |

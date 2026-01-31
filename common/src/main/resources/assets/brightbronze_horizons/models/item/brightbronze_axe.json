@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:item/handheld",
+  "textures": {
+    "layer0": "brightbronze_horizons:item/brightbronze_axe"
+  }
+}

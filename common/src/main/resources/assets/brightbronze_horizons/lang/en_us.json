@@ -1,0 +1,20 @@
+{
+  "itemGroup.brightbronze_horizons.main": "Brightbronze Horizons",
+  
+  "block.brightbronze_horizons.brightbronze_block": "Block of Brightbronze",
+  
+  "item.brightbronze_horizons.brightbronze_amalgam": "Brightbronze Amalgam",
+  "item.brightbronze_horizons.brightbronze_ingot": "Brightbronze Ingot",
+  "item.brightbronze_horizons.brightbronze_nugget": "Brightbronze Nugget",
+  
+  "item.brightbronze_horizons.brightbronze_sword": "Brightbronze Sword",
+  "item.brightbronze_horizons.brightbronze_pickaxe": "Brightbronze Pickaxe",
+  "item.brightbronze_horizons.brightbronze_axe": "Brightbronze Axe",
+  "item.brightbronze_horizons.brightbronze_shovel": "Brightbronze Shovel",
+  "item.brightbronze_horizons.brightbronze_hoe": "Brightbronze Hoe",
+  
+  "item.brightbronze_horizons.brightbronze_helmet": "Brightbronze Helmet",
+  "item.brightbronze_horizons.brightbronze_chestplate": "Brightbronze Chestplate",
+  "item.brightbronze_horizons.brightbronze_leggings": "Brightbronze Leggings",
+  "item.brightbronze_horizons.brightbronze_boots": "Brightbronze Boots"
+}
