@@ -1,0 +1,3 @@
+[submodule "tmp/chunkbychunk"]
+	path = tmp/chunkbychunk
+	url = https://github.com/GaiusRed/chunkbychunk.git
