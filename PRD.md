@@ -554,37 +554,38 @@ None at this time.
 
 ### Phase 3: Chunk Spawner System
 
-**Status:** Not Started
+**Status:** ✅ COMPLETED
 
 #### 3.1 Chunk Spawner Blocks
-- [ ] Create `ChunkSpawnerBlock` base class — Abstract block with tier parameter
-- [ ] Coal Chunk Spawner — Tier: Coal (common Overworld)
-- [ ] Iron Chunk Spawner — Tier: Iron (rare Overworld)
-- [ ] Gold Chunk Spawner — Tier: Gold (Nether biomes)
-- [ ] Emerald Chunk Spawner — Tier: Emerald (modded biomes)
-- [ ] Diamond Chunk Spawner — Tier: Diamond (End biomes)
+- [x] Create `ChunkSpawnerBlock` base class — Concrete block with tier parameter
+- [x] Coal Chunk Spawner — Tier: Coal (common Overworld)
+- [x] Iron Chunk Spawner — Tier: Iron (rare Overworld)
+- [x] Gold Chunk Spawner — Tier: Gold (Nether biomes)
+- [x] Emerald Chunk Spawner — Tier: Emerald (modded biomes)
+- [x] Diamond Chunk Spawner — Tier: Diamond (End biomes)
 
-#### 3.2 Chunk Spawner Block Entity
-- [ ] Create `ChunkSpawnerBlockEntity` — Handles activation logic
-- [ ] Edge detection logic — Detect if placed at chunk edge
-- [ ] Direction selection — Determine expansion direction (handle corners randomly)
-- [ ] Activation handler — Trigger chunk spawning on use
+#### 3.2 Chunk Spawner Logic (in ChunkSpawnerBlock)
+- [x] Edge detection logic — `getChunkEdgeDirections()` detects if placed at chunk edge
+- [x] Direction selection — Random selection when at corner
+- [x] Activation handler — `attemptChunkSpawn()` wired to BiomePoolManager, SourceDimensionManager, ChunkCopyService
+
+> **Implementation Note:** BlockEntity was intentionally omitted. All spawning logic is handled synchronously in `ChunkSpawnerBlock.useWithoutItem()` without needing persistent state. A BlockEntity may be added later for visual effects or cooldowns if needed.
 
 #### 3.3 Chunk Spawner Recipes
-- [ ] Recipe pattern implementation (A A A / A B A / A C A)
-- [ ] Coal Spawner recipe — B = Block of Coal
-- [ ] Iron Spawner recipe — B = Block of Iron
-- [ ] Gold Spawner recipe — B = Block of Gold
-- [ ] Emerald Spawner recipe — B = Block of Emerald
-- [ ] Diamond Spawner recipe — B = Block of Diamond
+- [x] Recipe pattern implementation (A A A / A B A / A C A)
+- [x] Coal Spawner recipe — B = Block of Coal
+- [x] Iron Spawner recipe — B = Block of Iron
+- [x] Gold Spawner recipe — B = Block of Gold
+- [x] Emerald Spawner recipe — B = Block of Emerald
+- [x] Diamond Spawner recipe — B = Block of Diamond
 
-**Suggested commit message:** `feat: Phase 3 — chunk spawner blocks, block entity, and recipes`
+**Suggested commit message:** `feat: Phase 3 — chunk spawner blocks and recipes`
 
 ---
 
 ### Phase 4: Biome-Coherent Source Dimensions
 
-**Status:** ✅ COMPLETED (with TODOs noted)
+**Status:** ✅ COMPLETED
 
 #### 4.1 Dimension Infrastructure
 - [x] Create `SourceDimensionManager` — Manages per-biome source dimensions
@@ -595,13 +596,15 @@ None at this time.
 #### 4.2 Chunk Copying System
 - [x] Create `ChunkCopyService` — Orchestrates chunk copying from source to playable
 - [x] Block state copying — Copy all block states from source chunk
-- [ ] Block entity copying — Copy block entities (chests, spawners, etc.) — *TODO: MC 1.21 API investigation needed*
-- [ ] Entity copying — Handle entities present in source chunk — *Not critical for terrain; deferred*
+- [x] Block entity copying — Copy block entities (chests, spawners, etc.) using MC 1.21 `TagValueInput`/`TagValueOutput` API
+- [x] Entity copying — Copy mobs and other entities from source chunk to target chunk
 - [x] Biome data preservation — Ensure biome data is set correctly in target (via `FixedBiomeSource`)
 
 #### 4.3 Coordinate Matching
 - [x] Implement coordinate matching — Source chunk X/Z = destination chunk X/Z
 - [x] No Nether scaling — Literal coordinate equality (no 8:1 scaling)
+
+> **Implementation Note (MC 1.21.10):** Block entity and entity serialization uses the new `TagValueInput`/`TagValueOutput` API instead of raw `CompoundTag`. Use `ProblemReporter.DISCARDING` for silent error handling during copy operations.
 
 **Suggested commit message:** `feat: Phase 4 — biome-coherent source dimensions and chunk copying`
 
@@ -836,7 +839,7 @@ None at this time.
 |-------|-------------|--------|
 | 1 | Core Infrastructure | ✅ Completed |
 | 2 | Brightbronze Materials | ✅ Completed |
-| 3 | Chunk Spawner System | ⬜ Not Started |
+| 3 | Chunk Spawner System | ✅ Completed |
 | 4 | Source Dimensions | ✅ Completed* |
 | 5 | Tier & Biome Pools | ✅ Completed |
 | 6 | World Initialization | ⬜ Not Started |
@@ -849,4 +852,4 @@ None at this time.
 | 13 | Polish & UX | ⬜ Not Started |
 | 14 | Testing | ⬜ Not Started |
 
-*Phase 4 Note: Block entity and entity copying are TODO (not critical for terrain generation). Dynamic dimension creation falls back to overworld until mixins are added.
+*Phase 4 Note: Dynamic dimension creation falls back to overworld until mixins are added for full dynamic dimension support.

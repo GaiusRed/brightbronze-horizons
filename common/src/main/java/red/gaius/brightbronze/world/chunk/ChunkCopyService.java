@@ -1,7 +1,15 @@
 package red.gaius.brightbronze.world.chunk;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.DoubleTag;
+import net.minecraft.nbt.ListTag;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.util.ProblemReporter;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntitySpawnReason;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
@@ -10,7 +18,15 @@ import net.minecraft.world.level.block.LiquidBlock;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.LevelChunk;
+import net.minecraft.world.level.storage.TagValueInput;
+import net.minecraft.world.level.storage.TagValueOutput;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
+import net.minecraft.world.phys.AABB;
 import red.gaius.brightbronze.BrightbronzeHorizons;
+
+import java.util.List;
+import java.util.Optional;
 
 /**
  * Service for copying chunks from source dimensions to the playable world.
@@ -73,6 +89,9 @@ public class ChunkCopyService {
             int minY = targetLevel.getMinY();
             int maxY = targetLevel.getMaxY();
             copyBlocks(sourceLevel, sourceChunkPos, targetLevel, targetChunkPos, minY, maxY + 1);
+
+            // Copy entities (mobs, item frames, armor stands, etc.)
+            copyEntities(sourceLevel, sourceChunkPos, targetLevel, targetChunkPos);
 
             // Mark target chunk as needing save
             targetChunk.markUnsaved();
@@ -160,14 +179,14 @@ public class ChunkCopyService {
     /**
      * Copies block entity data from source to target position.
      * 
-     * <p><b>Note:</b> Block entity copying in MC 1.21 requires special handling.
-     * TODO: Implement proper block entity copying once we understand the 1.21 API better.
-     * For now, block entities (chests, signs, etc.) will not preserve their contents.
+     * <p>This handles containers (chests, barrels), spawners, signs, lecterns,
+     * and other blocks with persistent data. The block at target position must
+     * already be set before calling this method.
      * 
      * @param sourceLevel The source level
-     * @param sourcePos The source position
+     * @param sourcePos The source position (immutable copy needed)
      * @param targetLevel The target level
-     * @param targetPos The target position
+     * @param targetPos The target position (immutable copy needed)
      */
     private static void copyBlockEntity(
             ServerLevel sourceLevel,
@@ -175,10 +194,134 @@ public class ChunkCopyService {
             ServerLevel targetLevel,
             BlockPos targetPos) {
 
-        // TODO: Implement block entity copying for MC 1.21
-        // The API has changed significantly and requires investigation.
-        // For world generation purposes (trees, grass, etc.), this is not critical.
-        // Block entities like chests in generated structures will be empty.
+        BlockEntity sourceBlockEntity = sourceLevel.getBlockEntity(sourcePos);
+        if (sourceBlockEntity == null) {
+            return;
+        }
+
+        // Get the target block entity (created by setBlock if the block type has one)
+        BlockEntity targetBlockEntity = targetLevel.getBlockEntity(targetPos);
+        if (targetBlockEntity == null) {
+            return;
+        }
+
+        try {
+            // Save source block entity data with full metadata
+            CompoundTag nbtData = sourceBlockEntity.saveWithFullMetadata(sourceLevel.registryAccess());
+            
+            // Update position in NBT to match target position
+            nbtData.putInt("x", targetPos.getX());
+            nbtData.putInt("y", targetPos.getY());
+            nbtData.putInt("z", targetPos.getZ());
+            
+            // Load data into target block entity using MC 1.21 ValueInput API
+            ValueInput valueInput = TagValueInput.create(
+                ProblemReporter.DISCARDING,
+                targetLevel.registryAccess(),
+                nbtData
+            );
+            targetBlockEntity.loadWithComponents(valueInput);
+            targetBlockEntity.setChanged();
+            
+        } catch (Exception e) {
+            BrightbronzeHorizons.LOGGER.warn("Failed to copy block entity at {}: {}", 
+                sourcePos, e.getMessage());
+        }
+    }
+
+    /**
+     * Copies all entities (mobs, item frames, armor stands, etc.) from the source
+     * chunk to the target chunk.
+     * 
+     * <p>Players are not copied. Each entity is serialized from the source and
+     * recreated in the target dimension at the corresponding position.
+     * 
+     * @param sourceLevel The source level
+     * @param sourceChunkPos The source chunk position
+     * @param targetLevel The target level
+     * @param targetChunkPos The target chunk position
+     */
+    private static void copyEntities(
+            ServerLevel sourceLevel,
+            ChunkPos sourceChunkPos,
+            ServerLevel targetLevel,
+            ChunkPos targetChunkPos) {
+
+        int xOffset = targetChunkPos.getMinBlockX() - sourceChunkPos.getMinBlockX();
+        int zOffset = targetChunkPos.getMinBlockZ() - sourceChunkPos.getMinBlockZ();
+
+        // Create AABB for the entire source chunk (all Y levels)
+        AABB chunkBounds = new AABB(
+            sourceChunkPos.getMinBlockX(),
+            sourceLevel.getMinY(),
+            sourceChunkPos.getMinBlockZ(),
+            sourceChunkPos.getMaxBlockX() + 1,
+            sourceLevel.getMaxY() + 1,
+            sourceChunkPos.getMaxBlockZ() + 1
+        );
+
+        // Get all entities in the chunk (excluding players)
+        List<Entity> entities = sourceLevel.getEntities(
+            (Entity) null, 
+            chunkBounds, 
+            entity -> !(entity instanceof Player)
+        );
+
+        if (entities.isEmpty()) {
+            return;
+        }
+
+        BrightbronzeHorizons.LOGGER.debug("Copying {} entities from chunk {} to {}", 
+            entities.size(), sourceChunkPos, targetChunkPos);
+
+        for (Entity sourceEntity : entities) {
+            try {
+                // Save entity to NBT using MC 1.21 ValueOutput API
+                TagValueOutput valueOutput = TagValueOutput.createWithContext(
+                    ProblemReporter.DISCARDING,
+                    sourceLevel.registryAccess()
+                );
+                if (!sourceEntity.saveAsPassenger(valueOutput)) {
+                    continue; // Entity doesn't want to be saved
+                }
+                CompoundTag nbtData = valueOutput.buildResult();
+
+                // Calculate new position
+                double newX = sourceEntity.getX() + xOffset;
+                double newY = sourceEntity.getY();
+                double newZ = sourceEntity.getZ() + zOffset;
+
+                // Update position in NBT - create new Pos list with updated coordinates
+                ListTag posList = new ListTag();
+                posList.add(DoubleTag.valueOf(newX));
+                posList.add(DoubleTag.valueOf(newY));
+                posList.add(DoubleTag.valueOf(newZ));
+                nbtData.put("Pos", posList);
+
+                // Remove UUID so a new one is generated (prevents duplicate UUID issues)
+                nbtData.remove("UUID");
+
+                // Create new entity in target level using MC 1.21 ValueInput API
+                ValueInput valueInput = TagValueInput.create(
+                    ProblemReporter.DISCARDING,
+                    targetLevel.registryAccess(),
+                    nbtData
+                );
+                Optional<Entity> newEntityOpt = EntityType.create(valueInput, targetLevel, EntitySpawnReason.LOAD);
+                
+                if (newEntityOpt.isPresent()) {
+                    Entity newEntity = newEntityOpt.get();
+                    newEntity.setPos(newX, newY, newZ);
+                    targetLevel.addFreshEntity(newEntity);
+                }
+
+            } catch (Exception e) {
+                BrightbronzeHorizons.LOGGER.warn("Failed to copy entity {} at {}: {}", 
+                    sourceEntity.getType().getDescriptionId(), 
+                    sourceEntity.position(), 
+                    e.getMessage());
+            }
+        }
     }
 
     /**
