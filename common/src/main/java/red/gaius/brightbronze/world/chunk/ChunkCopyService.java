@@ -56,8 +56,162 @@ public class ChunkCopyService {
      */
     public static final int LAYERS_PER_TICK = 8;
 
+    /**
+     * Phase 11: tick-bounded chunk copy job.
+     *
+     * <p>Call {@link ChunkCopyJob#tick(int)} from the server thread until it returns a
+     * {@link ChunkCopyJob.Result} with {@link ChunkCopyJob.Result#done()}.
+     */
+    public static ChunkCopyJob createJob(
+        ServerLevel sourceLevel,
+        ChunkPos sourceChunkPos,
+        ServerLevel targetLevel,
+        ChunkPos targetChunkPos,
+        @Nullable Holder<Biome> forcedTargetBiome,
+        @Nullable List<BlockReplacementRule> postProcessRules) {
+
+        return new ChunkCopyJob(
+            sourceLevel,
+            sourceChunkPos,
+            targetLevel,
+            targetChunkPos,
+            forcedTargetBiome,
+            postProcessRules
+        );
+    }
+
     private ChunkCopyService() {
         // Utility class
+    }
+
+    public static final class ChunkCopyJob {
+        private final ServerLevel sourceLevel;
+        private final ChunkPos sourceChunkPos;
+        private final ServerLevel targetLevel;
+        private final ChunkPos targetChunkPos;
+        @Nullable
+        private final Holder<Biome> forcedTargetBiome;
+        @Nullable
+        private final List<BlockReplacementRule> postProcessRules;
+
+        private final int minY;
+        private final int maxY;
+
+        private boolean started;
+        private boolean finished;
+        private boolean success;
+        private int nextY;
+
+        private ChunkCopyJob(
+            ServerLevel sourceLevel,
+            ChunkPos sourceChunkPos,
+            ServerLevel targetLevel,
+            ChunkPos targetChunkPos,
+            @Nullable Holder<Biome> forcedTargetBiome,
+            @Nullable List<BlockReplacementRule> postProcessRules) {
+
+            this.sourceLevel = sourceLevel;
+            this.sourceChunkPos = sourceChunkPos;
+            this.targetLevel = targetLevel;
+            this.targetChunkPos = targetChunkPos;
+            this.forcedTargetBiome = forcedTargetBiome;
+            this.postProcessRules = postProcessRules;
+
+            this.minY = targetLevel.getMinY();
+            this.maxY = targetLevel.getMaxY();
+            this.nextY = this.minY;
+        }
+
+        public Result tick(int layersPerTick) {
+            if (finished) {
+                return new Result(true, success);
+            }
+
+            try {
+                if (!started) {
+                    started = true;
+                    BrightbronzeHorizons.LOGGER.debug(
+                        "Starting tick-bounded chunk copy {} from {} to {} at {}",
+                        sourceChunkPos,
+                        sourceLevel.dimension().location(),
+                        targetLevel.dimension().location(),
+                        targetChunkPos
+                    );
+
+                    // Force-load both chunks for the duration of the job.
+                    sourceLevel.setChunkForced(sourceChunkPos.x, sourceChunkPos.z, true);
+                    targetLevel.setChunkForced(targetChunkPos.x, targetChunkPos.z, true);
+                }
+
+                int boundedLayers = Math.max(1, layersPerTick);
+                int toYExclusive = Math.min(nextY + boundedLayers, maxY + 1);
+
+                // Ensure chunk access stays hot.
+                sourceLevel.getChunk(sourceChunkPos.x, sourceChunkPos.z);
+                targetLevel.getChunk(targetChunkPos.x, targetChunkPos.z);
+
+                copyBlocks(sourceLevel, sourceChunkPos, targetLevel, targetChunkPos, nextY, toYExclusive);
+                nextY = toYExclusive;
+
+                if (nextY <= maxY) {
+                    return new Result(false, false);
+                }
+
+                // Finalize.
+                LevelChunk targetChunk = targetLevel.getChunk(targetChunkPos.x, targetChunkPos.z);
+
+                copyEntities(sourceLevel, sourceChunkPos, targetLevel, targetChunkPos);
+
+                if (forcedTargetBiome != null) {
+                    applyUniformBiome(targetChunk, forcedTargetBiome);
+                }
+
+                if (postProcessRules != null && !postProcessRules.isEmpty()) {
+                    ChunkPostProcessor.apply(targetLevel, targetChunkPos, postProcessRules);
+                }
+
+                targetChunk.markUnsaved();
+
+                // Force full light update for the chunk.
+                for (int y = minY; y <= maxY; y += 16) {
+                    BlockPos lightPos = new BlockPos(targetChunkPos.getMiddleBlockX(), y, targetChunkPos.getMiddleBlockZ());
+                    targetLevel.getChunkSource().getLightEngine().checkBlock(lightPos);
+                }
+
+                // Save and resync.
+                targetLevel.getChunkSource().save(false);
+                forceResyncChunk(targetLevel, targetChunkPos);
+
+                BrightbronzeHorizons.LOGGER.debug("Finished tick-bounded chunk copy {} -> {}", sourceChunkPos, targetChunkPos);
+                markFinished(true);
+                return new Result(true, true);
+
+            } catch (Exception e) {
+                BrightbronzeHorizons.LOGGER.error("Tick-bounded chunk copy failed: {}", e.getMessage(), e);
+                markFinished(false);
+                return new Result(true, false);
+            }
+        }
+
+        private void markFinished(boolean success) {
+            this.finished = true;
+            this.success = success;
+
+            // Always release forced chunks.
+            try {
+                sourceLevel.setChunkForced(sourceChunkPos.x, sourceChunkPos.z, false);
+            } catch (Exception ignored) {
+                // ignore
+            }
+            try {
+                targetLevel.setChunkForced(targetChunkPos.x, targetChunkPos.z, false);
+            } catch (Exception ignored) {
+                // ignore
+            }
+        }
+
+        public record Result(boolean done, boolean success) {
+        }
     }
 
     /**

@@ -876,24 +876,30 @@ None at this time.
 
 ### Phase 10: Multiplayer & Server Support
 
-**Status:** Not Started
+**Status:** 🔄 In Progress
 
 #### 10.1 Permissions & Access
-- [ ] No restrictions — Anyone can spawn chunks (per PRD)
-- [ ] No cooldown — Only crafting cost gates usage
+- [x] No restrictions — Anyone can spawn chunks (per PRD)
+- [x] No cooldown — Only crafting cost gates usage
 
 #### 10.2 Server Robustness
-- [ ] Thread safety — Ensure chunk operations are thread-safe
-- [ ] Chunk loading — Proper chunk loading/unloading during copy
-- [ ] Concurrent players — Handle multiple players spawning chunks
+- [x] Thread safety — Ensure chunk operations are thread-safe
+- [x] Chunk loading — Proper chunk loading/unloading during copy
+- [x] Concurrent players — Handle multiple players spawning chunks
 
 #### 10.3 Persistence
 - [x] Deterministic RNG — Persistent deterministic RNG for reproducible biome selection (SavedData-backed)
-- [ ] State persistence — Save/load RNG state, spawned chunk tracking
+- [x] State persistence — Save/load RNG state, spawned chunk tracking
 - [ ] Restart consistency — Same seed + config = same results
 
 > **Implementation Note (2026-02-01):** Chunk spawner biome selection is now deterministic across restarts.
 > Corner-direction choice (when placed exactly on a chunk corner) is also deterministic (seed + position).
+
+> **Implementation Note (2026-02-02):** Chunk spawns are now handled by a central server-side queue/manager.
+> - Chunk spawner activation enqueues work (does not synchronously copy the chunk).
+> - Copy work is tick-bounded (layers-per-tick) to reduce stalls.
+> - Requests are de-duped per target chunk (prevents double-spawn races).
+> - The spawner block breaks and announces only on successful completion (PRD-aligned).
 
 > **PRD Alignment Note (2026-02-01):** Default Iron biome tag no longer includes cave biomes.
 
@@ -903,16 +909,21 @@ None at this time.
 
 ### Phase 11: Performance & Disk Management
 
-**Status:** Not Started
+**Status:** 🔄 In Progress
 
 #### 11.1 Performance Controls
 - [ ] Async chunk generation — Avoid main-thread stalls
-- [ ] Bounded operations — Limit work per tick
-- [ ] Source dimension caps — Prevent runaway dimension creation
+- [x] Bounded operations — Limit work per tick
+- [x] Source dimension caps — Prevent runaway dimension creation
 
 #### 11.2 Disk Management
-- [ ] Pruning command — Admin command to prune unused source chunks
-- [ ] Usage reporting — Command to report per-biome source dimension sizes
+- [x] Pruning command — Admin command to prune unused source chunks
+- [x] Usage reporting — Command to report per-biome source dimension sizes
+
+> **Implementation Note (2026-02-02):** Disk tools are provided as admin commands:
+> - `/bbh:sourceUsage` reports per-biome source dimension directory size and total.
+> - `/bbh:pruneSources` deletes source-dimension region files that are not referenced by spawned-chunk metadata.
+>   This is intentionally coarse-grained (region-file level), and requires chunk spawn metadata to exist.
 
 **Suggested commit message:** `feat: Phase 11 — performance controls and disk management tools`
 
@@ -974,8 +985,8 @@ None at this time.
 | 7 | Mob Spawning | ✅ Completed |
 | 8 | Configuration | 🔄 In Progress |
 | 9 | Block Post-Processing | ✅ Completed |
-| 10 | Multiplayer Support | ⬜ Not Started |
-| 11 | Performance & Disk | ⬜ Not Started |
+| 10 | Multiplayer Support | 🔄 In Progress |
+| 11 | Performance & Disk | 🔄 In Progress |
 | 12 | Polish & UX | 🔄 In Progress |
 | 13 | Testing | ⬜ Not Started |
 

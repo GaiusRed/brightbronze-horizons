@@ -12,6 +12,7 @@ import red.gaius.brightbronze.registry.ModCreativeTabs;
 import red.gaius.brightbronze.registry.ModItems;
 import red.gaius.brightbronze.registry.ModWorldGen;
 import red.gaius.brightbronze.world.StartingAreaManager;
+import red.gaius.brightbronze.world.chunk.ChunkExpansionManager;
 
 /**
  * Main mod class for Brightbronze Horizons.
@@ -45,6 +46,9 @@ public final class BrightbronzeHorizons {
 
         // Network packets (Phase 8: dedicated server config sync)
         BrightbronzeNetworking.init();
+
+        // Phase 10/11: central server-side expansion manager (queue + bounded work)
+        ChunkExpansionManager.init();
         
         // Register server lifecycle events
         registerServerEvents();

@@ -5,6 +5,7 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.datafix.DataFixTypes;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.saveddata.SavedData;
@@ -15,6 +16,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
 import java.util.Set;
 
 /**
@@ -50,7 +53,8 @@ public class PlayableAreaData extends SavedData {
             Codec.BOOL.fieldOf("initialized").forGetter(data -> data.initialized),
             CHUNK_POS_CODEC.fieldOf("spawn_chunk").forGetter(data -> data.spawnChunk),
             CHUNK_POS_CODEC.listOf().fieldOf("spawned_chunks").forGetter(data -> new ArrayList<>(data.spawnedChunks)),
-            Codec.LONG.optionalFieldOf("rng_state", 0L).forGetter(data -> data.rngState)
+            Codec.LONG.optionalFieldOf("rng_state", 0L).forGetter(data -> data.rngState),
+            SpawnedChunkMeta.CODEC.listOf().optionalFieldOf("spawned_chunk_meta", List.of()).forGetter(data -> data.spawnedChunkMetaList())
         ).apply(instance, PlayableAreaData::new)
     );
     
@@ -64,6 +68,9 @@ public class PlayableAreaData extends SavedData {
     
     /** All chunks that are part of the playable area */
     private final Set<ChunkPos> spawnedChunks;
+
+    /** Spawn metadata keyed by chunk position (stored as list in codec for simplicity). */
+    private final Map<Long, SpawnedChunkMeta> spawnedChunkMeta;
     
     /** Whether the starting area has been initialized */
     private boolean initialized;
@@ -85,6 +92,7 @@ public class PlayableAreaData extends SavedData {
      */
     public PlayableAreaData() {
         this.spawnedChunks = new HashSet<>();
+        this.spawnedChunkMeta = new HashMap<>();
         this.initialized = false;
         this.spawnChunk = new ChunkPos(0, 0);
         this.rngState = 0L;
@@ -94,11 +102,20 @@ public class PlayableAreaData extends SavedData {
      * Creates PlayableAreaData from loaded data.
      * Used by the Codec during deserialization.
      */
-    private PlayableAreaData(boolean initialized, ChunkPos spawnChunk, List<ChunkPos> spawnedChunks, long rngState) {
+    private PlayableAreaData(boolean initialized, ChunkPos spawnChunk, List<ChunkPos> spawnedChunks, long rngState, List<SpawnedChunkMeta> meta) {
         this.initialized = initialized;
         this.spawnChunk = spawnChunk;
         this.spawnedChunks = new HashSet<>(spawnedChunks);
         this.rngState = rngState;
+
+        this.spawnedChunkMeta = new HashMap<>();
+        if (meta != null) {
+            for (SpawnedChunkMeta m : meta) {
+                if (m != null) {
+                    this.spawnedChunkMeta.put(chunkKey(m.chunk()), m);
+                }
+            }
+        }
         
         BrightbronzeHorizons.LOGGER.debug(
             "Loaded PlayableAreaData: {} chunks, initialized={}",
@@ -272,6 +289,47 @@ public class PlayableAreaData extends SavedData {
             );
         }
         return added;
+    }
+
+    /**
+     * Records metadata about a spawned chunk for Phase 10/11 reporting and pruning.
+     */
+    public void recordSpawnedChunk(ChunkPos pos, ResourceLocation biomeId, String tierName) {
+        if (pos == null || biomeId == null || tierName == null) {
+            return;
+        }
+        spawnedChunkMeta.put(chunkKey(pos), new SpawnedChunkMeta(pos, biomeId, tierName));
+        setDirty();
+    }
+
+    public Set<ResourceLocation> getRecordedBiomeIds() {
+        Set<ResourceLocation> out = new HashSet<>();
+        for (SpawnedChunkMeta meta : spawnedChunkMeta.values()) {
+            out.add(meta.biome());
+        }
+        return out;
+    }
+
+    public List<SpawnedChunkMeta> getSpawnedChunkMeta() {
+        return spawnedChunkMetaList();
+    }
+
+    private List<SpawnedChunkMeta> spawnedChunkMetaList() {
+        return new ArrayList<>(spawnedChunkMeta.values());
+    }
+
+    private static long chunkKey(ChunkPos pos) {
+        return (((long) pos.x) << 32) ^ (pos.z & 0xFFFFFFFFL);
+    }
+
+    public record SpawnedChunkMeta(ChunkPos chunk, ResourceLocation biome, String tier) {
+        static final Codec<SpawnedChunkMeta> CODEC = RecordCodecBuilder.create(instance ->
+            instance.group(
+                CHUNK_POS_CODEC.fieldOf("chunk").forGetter(SpawnedChunkMeta::chunk),
+                ResourceLocation.CODEC.fieldOf("biome").forGetter(SpawnedChunkMeta::biome),
+                Codec.STRING.fieldOf("tier").forGetter(SpawnedChunkMeta::tier)
+            ).apply(instance, SpawnedChunkMeta::new)
+        );
     }
 
     /**

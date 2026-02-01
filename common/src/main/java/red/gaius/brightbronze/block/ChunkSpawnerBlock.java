@@ -3,7 +3,6 @@ package red.gaius.brightbronze.block;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.Holder;
-import net.minecraft.core.Registry;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
@@ -21,11 +20,9 @@ import red.gaius.brightbronze.config.BrightbronzeConfig;
 import red.gaius.brightbronze.world.BiomePoolManager;
 import red.gaius.brightbronze.world.ChunkSpawnerTier;
 import red.gaius.brightbronze.world.PlayableAreaData;
-import red.gaius.brightbronze.world.chunk.ChunkCopyService;
+import red.gaius.brightbronze.world.chunk.ChunkExpansionManager;
 import red.gaius.brightbronze.world.rules.BiomeRuleManager;
 import red.gaius.brightbronze.world.rules.BiomeRuleManager.WeightedBiomePool;
-import red.gaius.brightbronze.world.dimension.SourceDimensionManager;
-import red.gaius.brightbronze.world.mob.ChunkSpawnMobEvent;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -111,34 +108,29 @@ public class ChunkSpawnerBlock extends Block {
             currentChunk.z + expansionDirection.getStepZ()
         );
 
-        // Attempt to spawn the chunk
-        SpawnAttemptResult result = attemptChunkSpawn(serverLevel, player, pos, targetChunk);
-
-        if (!result.success()) {
-            player.displayClientMessage(result.failureMessage(), true);
+        // Phase 10/11: select biome deterministically and enqueue a tick-bounded job.
+        PlayableAreaData playableData = PlayableAreaData.get(serverLevel.getServer());
+        SpawnAttemptResult selection = selectBiomeForSpawn(serverLevel, playableData, pos);
+        if (!selection.success()) {
+            player.displayClientMessage(selection.failureMessage(), true);
             return InteractionResult.FAIL;
         }
 
-        // PRD: break-on-use so loot table drops components.
-        // destroyBlock(..., true) triggers drops and removes the block.
-        boolean destroyed = level.destroyBlock(pos, true, player);
-        if (!destroyed) {
-            // This should be extremely rare; treat it as a non-fatal failure.
-            player.displayClientMessage(Component.translatable("message.brightbronze_horizons.spawner.break_failed"), true);
-            return InteractionResult.FAIL;
-        }
-
-        // PRD: announce success serverwide (no serverwide announcement on failures).
-        announceSpawn(serverLevel, player, tier, targetChunk, result.biomeId());
-
-        // Local confirmation (actionbar)
-        player.displayClientMessage(
-            Component.translatable(
-                "message.brightbronze_horizons.spawner.success",
-                tier.getName(), targetChunk.x, targetChunk.z, result.biomeId().toString()
-            ),
-            true
+        ChunkExpansionManager.EnqueueResult enqueueResult = ChunkExpansionManager.enqueue(
+            serverLevel,
+            pos,
+            tier,
+            targetChunk,
+            selection.biomeId(),
+            player.getUUID(),
+            player.getName().getString()
         );
+
+        if (!enqueueResult.accepted()) {
+            player.displayClientMessage(enqueueResult.failureMessage(), true);
+            return InteractionResult.FAIL;
+        }
+
         return InteractionResult.CONSUME;
     }
 
@@ -170,100 +162,6 @@ public class ChunkSpawnerBlock extends Block {
         }
         
         return edges;
-    }
-
-    /**
-     * Attempts to spawn a new chunk at the target position.
-     * 
-     * @param level The server level
-     * @param player The player who activated the spawner
-     * @param targetChunk The chunk position to spawn
-     * @return true if successful, false otherwise
-     */
-    private SpawnAttemptResult attemptChunkSpawn(ServerLevel level, Player player, BlockPos spawnerPos, ChunkPos targetChunk) {
-        BrightbronzeHorizons.LOGGER.info(
-            "Chunk spawner activated: tier={}, target=({}, {}), player={}",
-            tier.getName(), targetChunk.x, targetChunk.z, player.getName().getString()
-        );
-
-        // Step 0: Validate that the target chunk can be expanded into
-        PlayableAreaData playableData = PlayableAreaData.get(level.getServer());
-        
-        if (!playableData.canExpandInto(targetChunk)) {
-            if (playableData.isChunkPlayable(targetChunk)) {
-                BrightbronzeHorizons.LOGGER.warn(
-                    "Target chunk ({}, {}) is already in playable area",
-                    targetChunk.x, targetChunk.z
-                );
-                return SpawnAttemptResult.failure(Component.translatable("message.brightbronze_horizons.spawner.already_spawned"));
-            } else {
-                BrightbronzeHorizons.LOGGER.warn(
-                    "Target chunk ({}, {}) is not adjacent to playable area",
-                    targetChunk.x, targetChunk.z
-                );
-                return SpawnAttemptResult.failure(Component.translatable("message.brightbronze_horizons.spawner.not_adjacent"));
-            }
-        }
-
-        // Step 1: Select a biome deterministically per PRD.
-        // - Coal: always spawns the biome the spawner is placed on.
-        // - Other tiers: if placed-on biome is eligible for the tier pool, use it 40% of the time; otherwise random.
-        SpawnAttemptResult selection = selectBiomeForSpawn(level, playableData, spawnerPos);
-        if (!selection.success()) {
-            return selection;
-        }
-
-        ResourceLocation biomeId = selection.biomeId();
-
-        BrightbronzeHorizons.LOGGER.info("Selected biome {} for tier {}", biomeId, tier.getName());
-
-        Registry<Biome> biomeRegistry = level.registryAccess().lookupOrThrow(Registries.BIOME);
-        Optional<Holder.Reference<Biome>> biomeHolderOpt = biomeRegistry.get(biomeId);
-        if (biomeHolderOpt.isEmpty()) {
-            return SpawnAttemptResult.failure(Component.translatable("message.brightbronze_horizons.spawner.unknown_biome"));
-        }
-        Holder<Biome> biomeHolder = biomeHolderOpt.get();
-
-        // Step 2: Get or create the source dimension for this biome
-        ServerLevel sourceLevel = SourceDimensionManager.getOrCreateSourceDimension(
-            level.getServer(),
-            biomeId
-        );
-
-        // Step 3: Copy the chunk from source to target
-        // The source chunk uses the same coordinates as the target (per PRD Section 4.3)
-        ChunkPos sourceChunkPos = targetChunk;
-
-        boolean success = ChunkCopyService.copyChunk(
-            sourceLevel,
-            sourceChunkPos,
-            level,
-            targetChunk,
-            biomeHolder,
-            BiomeRuleManager.getReplacementRules(level.registryAccess(), biomeId)
-        );
-
-        if (success) {
-            // Register the new chunk in the playable area
-            playableData.addChunk(targetChunk);
-            
-            BrightbronzeHorizons.LOGGER.info(
-                "Successfully spawned {} biome chunk at ({}, {})",
-                biomeId, targetChunk.x, targetChunk.z
-            );
-
-            // Phase 7: one-time scripted mob spawns when a chunk is revealed.
-            if (BrightbronzeConfig.get().enableChunkSpawnMobs) {
-                ChunkSpawnMobEvent.fire(level, targetChunk, tier);
-            }
-            return SpawnAttemptResult.success(biomeId);
-        }
-
-        BrightbronzeHorizons.LOGGER.warn(
-            "Chunk copy failed for tier {} at ({}, {}) biome {}",
-            tier.getName(), targetChunk.x, targetChunk.z, biomeId
-        );
-        return SpawnAttemptResult.failure(Component.translatable("message.brightbronze_horizons.spawner.copy_failed"));
     }
 
     private SpawnAttemptResult selectBiomeForSpawn(ServerLevel level, PlayableAreaData playableData, BlockPos spawnerPos) {
@@ -313,20 +211,6 @@ public class ChunkSpawnerBlock extends Block {
             }
         }
         return false;
-    }
-
-    private static void announceSpawn(ServerLevel level, Player player, ChunkSpawnerTier tier, ChunkPos chunkPos, ResourceLocation biomeId) {
-        level.getServer().getPlayerList().broadcastSystemMessage(
-            Component.translatable(
-                "message.brightbronze_horizons.spawner.announce",
-                player.getName(),
-                tier.getName(),
-                chunkPos.x,
-                chunkPos.z,
-                biomeId.toString()
-            ),
-            false
-        );
     }
 
     private record SpawnAttemptResult(boolean success, ResourceLocation biomeId, Component failureMessage) {

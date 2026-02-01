@@ -19,6 +19,8 @@ import red.gaius.brightbronze.registry.ModDimensions;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
+import java.util.HashSet;
 
 /**
  * Manages source dimensions for biome-coherent chunk generation.
@@ -72,6 +74,16 @@ public class SourceDimensionManager {
                 biomeId
             );
             return server.getLevel(Level.OVERWORLD);
+        }
+
+        // Phase 11: cap source dimension creation to prevent runaway growth.
+        int cap = red.gaius.brightbronze.config.BrightbronzeConfig.get().maxSourceDimensions;
+        if (cap > 0 && !activeDimensions.containsKey(biomeId) && getActiveDimensionCount() >= cap) {
+            BrightbronzeHorizons.LOGGER.warn(
+                "Source dimension cap reached ({}). Refusing to create new source dimension for biome {}.",
+                cap, biomeId
+            );
+            return null;
         }
 
         // Create the chunk generator for this biome
@@ -201,5 +213,12 @@ public class SourceDimensionManager {
      */
     public static int getActiveDimensionCount() {
         return activeDimensions.size();
+    }
+
+    /**
+     * Phase 11: returns the set of biome IDs with active (loaded) source dimensions.
+     */
+    public static Set<ResourceLocation> getActiveBiomeIds() {
+        return new HashSet<>(activeDimensions.keySet());
     }
 }

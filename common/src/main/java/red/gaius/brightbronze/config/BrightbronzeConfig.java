@@ -111,6 +111,12 @@ public final class BrightbronzeConfig {
         /** If false, scripted mob spawns on chunk spawn are disabled. */
         public boolean enableChunkSpawnMobs = true;
 
+        /** Phase 11: max vertical layers (Y-levels) copied per tick during chunk spawn to reduce hitching. */
+        public int chunkCopyLayersPerTick = 8;
+
+        /** Phase 11: max number of source dimensions to create (0 = unlimited). */
+        public int maxSourceDimensions = 0;
+
         /** Per-tier enable/disable. Keys are tier enum names (e.g. "COPPER"). */
         public Map<String, Boolean> tiersEnabled = new HashMap<>();
 
@@ -137,6 +143,14 @@ public final class BrightbronzeConfig {
             }
             if (tierBlockOverrides == null) {
                 tierBlockOverrides = Map.of();
+            }
+
+            if (chunkCopyLayersPerTick <= 0) {
+                chunkCopyLayersPerTick = 8;
+            }
+
+            if (maxSourceDimensions < 0) {
+                maxSourceDimensions = 0;
             }
         }
 

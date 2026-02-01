@@ -7,6 +7,7 @@ import net.neoforged.neoforge.event.RegisterCommandsEvent;
 import net.neoforged.fml.common.Mod;
 import red.gaius.brightbronze.BrightbronzeHorizons;
 import red.gaius.brightbronze.command.BbhDebugCommands;
+import red.gaius.brightbronze.command.BbhDiskCommands;
 import red.gaius.brightbronze.world.mob.MobSpawnTableReloadListener;
 import red.gaius.brightbronze.world.rules.BiomeRuleReloadListener;
 
@@ -38,6 +39,11 @@ public final class BrightbronzeHorizonsNeoForge {
         // Debug commands (helps inspect dynamic source dimensions).
         NeoForge.EVENT_BUS.addListener((RegisterCommandsEvent event) ->
             BbhDebugCommands.register(event.getDispatcher())
+        );
+
+        // Phase 11: disk management and usage reporting.
+        NeoForge.EVENT_BUS.addListener((RegisterCommandsEvent event) ->
+            BbhDiskCommands.register(event.getDispatcher())
         );
     }
 }

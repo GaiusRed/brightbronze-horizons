@@ -9,6 +9,7 @@ import net.minecraft.server.packs.PackType;
 import net.minecraft.server.packs.resources.ResourceManager;
 import red.gaius.brightbronze.BrightbronzeHorizons;
 import red.gaius.brightbronze.command.BbhDebugCommands;
+import red.gaius.brightbronze.command.BbhDiskCommands;
 import red.gaius.brightbronze.world.mob.MobSpawnTableManager;
 import red.gaius.brightbronze.world.rules.BiomeRuleManager;
 
@@ -50,6 +51,11 @@ public final class BrightbronzeHorizonsFabric implements ModInitializer {
         // Debug commands (helps inspect dynamic source dimensions).
         CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) ->
             BbhDebugCommands.register(dispatcher)
+        );
+
+        // Phase 11: disk management and usage reporting.
+        CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) ->
+            BbhDiskCommands.register(dispatcher)
         );
     }
 }
