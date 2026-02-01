@@ -33,7 +33,10 @@ public final class ChunkMobSpawner {
             return;
         }
 
-        List<MobSpawnRule> rules = getDefaultRulesForTier(tier);
+        List<MobSpawnRule> rules = MobSpawnTableManager.getRulesForTier(tier);
+        if (rules.isEmpty()) {
+            rules = getDefaultRulesForTier(tier);
+        }
         if (rules.isEmpty()) {
             return;
         }

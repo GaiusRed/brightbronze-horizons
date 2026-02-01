@@ -1,0 +1,5 @@
+{
+  "rules": [
+    { "entity": "minecraft:enderman", "min": 1, "max": 2 }
+  ]
+}

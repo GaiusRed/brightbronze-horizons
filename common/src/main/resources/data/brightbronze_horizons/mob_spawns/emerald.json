@@ -1,0 +1,5 @@
+{
+  "rules": [
+    { "entity": "minecraft:zombie", "min": 0, "max": 2 }
+  ]
+}

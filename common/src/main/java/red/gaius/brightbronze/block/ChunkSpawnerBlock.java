@@ -22,7 +22,7 @@ import red.gaius.brightbronze.world.ChunkSpawnerTier;
 import red.gaius.brightbronze.world.PlayableAreaData;
 import red.gaius.brightbronze.world.chunk.ChunkCopyService;
 import red.gaius.brightbronze.world.dimension.SourceDimensionManager;
-import red.gaius.brightbronze.world.mob.ChunkMobSpawner;
+import red.gaius.brightbronze.world.mob.ChunkSpawnMobEvent;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -241,7 +241,7 @@ public class ChunkSpawnerBlock extends Block {
             );
 
             // Phase 7: one-time scripted mob spawns when a chunk is revealed.
-            ChunkMobSpawner.onChunkSpawned(level, targetChunk, tier);
+            ChunkSpawnMobEvent.fire(level, targetChunk, tier);
             return SpawnAttemptResult.success(biomeId);
         }
 

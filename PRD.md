@@ -196,6 +196,14 @@ Selection requirements:
 	- **All other tiers:** if the spawner is placed on a biome that is eligible for that tier’s pool, there is a **40% chance** to spawn that same biome; otherwise select randomly from the tier’s eligible biome pool.
 - **Chunk location is not random:** the source chunk coordinates must match the destination chunk coordinates (see Section 4.3).
 
+Future-looking requirement (not implemented in the current version):
+
+- **Biome-pinned Chunk Spawner variants:** future blocks like “Plains Chunk Spawner” or “Desert Chunk Spawner” may exist.
+	- These spawners request a specific biome ID and must always attempt to spawn that biome, regardless of the biome they are placed on.
+	- They must still obey all other constraints (tier gating rules, source-dimension sourcing rules, determinism, and failure messaging/consumption behavior).
+	- If the requested biome is not eligible/available, activation must fail gracefully (same failure behavior as “zero eligible biomes”).
+	- Core selection logic must accept an optional “biome override” so this feature can be added later without rewriting chunk-copy or post-processing logic.
+
 Messaging requirements:
 
 - On successful spawn, announce serverwide: who spawned it, which tier, chunk coordinates, and the selected biome.
@@ -345,7 +353,7 @@ The mod should separate configuration into two layers:
 	 - Intended to be edited in `config/` and synchronized/validated on dedicated servers.
 
 2. **Data-driven rules (data pack / resource reloadable):**
-	 - Biome/tier mapping, block filters, spawn tables, and generation controls.
+	 - Biome/tier mapping, block replacements, spawn tables, and generation controls.
 	 - Intended to be overridden by modpacks without requiring code.
 
 ### 6.2 Biome Rule Model (What Needs to Be Expressible)
@@ -358,10 +366,11 @@ At minimum, the data-driven rules must allow defining entries that target a set 
 
 - **Tier assignment:** coal / iron / gold / emerald / diamond
 
-- **Block post-processing filters (applied to spawned chunks):**
-	- **Excludes:** blocks/tags to remove or replace
-	- **Includes:** blocks/tags to keep even if excluded by a broader rule
-	- Replacement behavior: excluded blocks are replaced with **air**.
+- **Block post-processing replacements (applied to spawned chunks):**
+	- A list of replacement rules, processed in order.
+	- Each rule matches a block ID or a block tag, then replaces matches with a target block.
+	- Removal is expressed as replacement to **air**.
+	- Examples: replace `#minecraft:diamond_ores` -> `minecraft:stone`; replace `minecraft:copper_ore` -> `minecraft:iron_ore`.
 
 - **Mob spawn table for “chunk spawned” events:**
 	- Entity type
@@ -370,7 +379,7 @@ At minimum, the data-driven rules must allow defining entries that target a set 
 
 **Generation controls (target: true gating; fallback: best-effort):**
 
-- Prefer “true include/exclude generation” in the source dimensions for non-structure worldgen content (e.g., ores, vegetation/features, liquids).
+- Prefer “true worldgen gating” in the source dimensions for non-structure worldgen content (e.g., ores, vegetation/features, liquids).
 - If true gating proves infeasible or too fragile for modded worldgen, the system may fall back to best-effort post-processing/stripping.
 
 ### 6.3 Format Options (Pros/Cons)
@@ -406,7 +415,7 @@ Precedence requirements:
 
 - Rules must have an explicit ordering mechanism (e.g., numeric priority) to resolve overlaps.
 - When multiple rules match a biome, the highest priority rule wins for tier assignment.
-- Block filtering and mob spawning use “first-match wins” after applying priority ordering.
+- Block replacements and mob spawning use “first-match wins” after applying priority ordering.
 
 ### 6.5 Additional Fields Likely Needed (Beyond the Initial Sketch)
 
@@ -417,6 +426,7 @@ To make the system robust for modpacks, expect to require:
 - **Adjacency constraints:** whether new chunks must share biome with the chunk they attach to.
 - **Safety rules:** spawn-protection radius, safe-spawn checks, lava/water replacement toggles.
 - **Spawn caps:** prevent excessive mob spawns on repeated chunk generation.
+- **Biome override (future spawner variants):** allow a spawner block to request a specific biome ID (e.g., “Plains Chunk Spawner”), bypassing random selection while still applying the same biome rule effects.
 
 ## 7. Compatibility, Multiplayer, and Operational Requirements
 
@@ -788,24 +798,26 @@ None at this time.
 
 ### Phase 7: Mob Spawning on Chunk Spawn
 
-**Status:** 🔄 In Progress (hardcoded defaults; Phase 8 will data-drive)
+**Status:** ✅ COMPLETED
 
 #### 7.1 Spawn Event System
-- [ ] Create `ChunkSpawnMobEvent` — Triggered when chunk is spawned
+- [x] Create `ChunkSpawnMobEvent` — Triggered when chunk is spawned
 - [x] Time-of-day checks — Coal/Iron tiers spawn mobs only at night
 - [x] Always-spawn tiers — Gold/Emerald/Diamond spawn regardless of time
 
 #### 7.2 Spawn Configuration
 - [x] Create `MobSpawnRule` data class — Entity type, min/max count, conditions
-- [ ] Spawn table loading — Load from data pack
+- [x] Spawn table loading — Load from data pack
 - [x] Difficulty/gamerule respect — Check `doMobSpawning`, difficulty level
+
+> **Data pack path (2026-02-01):** Default tier spawn tables are shipped at `data/brightbronze_horizons/mob_spawns/{tier}.json`.
 
 #### 7.3 Spawn Execution
 - [x] Create `ChunkMobSpawner` — Executes one-time mob spawns
 - [x] Surface spawn positions — Find safe spawn locations on chunk surface
 - [x] Spawn caps — Prevent excessive spawns per chunk
 
-**Suggested commit message:** `feat: Phase 7 — mob spawning system for newly spawned chunks`
+**Suggested commit message:** `feat: Phase 7 — datapack-driven mob spawns on chunk spawn`
 
 ---
 
@@ -829,7 +841,7 @@ None at this time.
 #### 8.3 Biome Rule Schema
 - [ ] Biome selector — Tag reference + optional allow/deny lists
 - [ ] Tier assignment — Which tier this rule assigns
-- [ ] Block filters — Exclude/include block tags/IDs
+- [ ] Block replacements — Replace block tags/IDs with specified target blocks
 - [ ] Mob spawn table — Per-rule spawn configuration
 - [ ] Weighting — Rarity weight for biome selection
 
@@ -847,18 +859,18 @@ None at this time.
 
 **Status:** Not Started
 
-#### 9.1 Block Filter System
-- [ ] Create `BlockFilter` — Defines exclude/include rules
-- [ ] Tag-based filtering — Support block tags (e.g., `#minecraft:ores`)
-- [ ] Block ID filtering — Support specific block IDs
-- [ ] Replacement behavior — Replace excluded blocks with air
+#### 9.1 Block Replacement System
+- [ ] Create `BlockReplacementRule` — Defines match + replacement target
+- [ ] Tag-based matching — Support block tags (e.g., `#minecraft:ores`)
+- [ ] Block ID matching — Support specific block IDs
+- [ ] Replacement targets — Replace matches with a specific block ID (including `minecraft:air` for removal)
 
 #### 9.2 Post-Processing Pipeline
-- [ ] Create `ChunkPostProcessor` — Applies filters to spawned chunks
-- [ ] Include override — Include rules override exclude rules
+- [ ] Create `ChunkPostProcessor` — Applies replacements to spawned chunks
+- [ ] Rule ordering — Deterministic rule order; first-match wins
 - [ ] Performance optimization — Efficient block iteration
 
-**Suggested commit message:** `feat: Phase 9 — block post-processing filters for spawned chunks`
+**Suggested commit message:** `feat: Phase 9 — block replacements for spawned chunks`
 
 ---
 
@@ -959,7 +971,7 @@ None at this time.
 | 5 | Tier & Biome Pools | ✅ Completed |
 | 6A | **Void World Type** | ✅ Completed |
 | 6 | World Initialization | ✅ Completed |
-| 7 | Mob Spawning | 🔄 In Progress |
+| 7 | Mob Spawning | ✅ Completed |
 | 8 | Configuration | ⬜ Not Started |
 | 9 | Block Post-Processing | ⬜ Not Started |
 | 10 | Multiplayer Support | ⬜ Not Started |
