@@ -86,7 +86,7 @@ public final class ChunkMobSpawner {
 
     private static List<MobSpawnRule> getDefaultRulesForTier(ChunkSpawnerTier tier) {
         return switch (tier) {
-            case COAL, IRON -> List.of(
+            case COPPER, COAL, IRON -> List.of(
                 new MobSpawnRule(EntityType.ZOMBIE, 1, 3),
                 new MobSpawnRule(EntityType.SKELETON, 0, 2),
                 new MobSpawnRule(EntityType.SPIDER, 0, 1)

@@ -57,6 +57,7 @@ public final class ModCreativeTabs {
 
         // Chunk Spawners
         output.accept(ModItems.COAL_CHUNK_SPAWNER_ITEM.get());
+        output.accept(ModItems.COPPER_CHUNK_SPAWNER_ITEM.get());
         output.accept(ModItems.IRON_CHUNK_SPAWNER_ITEM.get());
         output.accept(ModItems.GOLD_CHUNK_SPAWNER_ITEM.get());
         output.accept(ModItems.EMERALD_CHUNK_SPAWNER_ITEM.get());

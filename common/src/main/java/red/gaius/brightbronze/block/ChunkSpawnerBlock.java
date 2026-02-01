@@ -3,6 +3,8 @@ package red.gaius.brightbronze.block;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.Holder;
+import net.minecraft.core.Registry;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
@@ -99,25 +101,34 @@ public class ChunkSpawnerBlock extends Block {
         );
 
         // Attempt to spawn the chunk
-        boolean success = attemptChunkSpawn(serverLevel, player, targetChunk);
-        
-        if (success) {
-            // Remove the spawner block (consumed on use)
-            level.removeBlock(pos, false);
-            
-            player.displayClientMessage(
-                Component.translatable("message.brightbronze_horizons.spawner.success", 
-                    tier.getName(), targetChunk.x, targetChunk.z),
-                true
-            );
-            return InteractionResult.CONSUME;
-        } else {
-            player.displayClientMessage(
-                Component.translatable("message.brightbronze_horizons.spawner.failed"),
-                true
-            );
+        SpawnAttemptResult result = attemptChunkSpawn(serverLevel, player, pos, targetChunk);
+
+        if (!result.success()) {
+            player.displayClientMessage(result.failureMessage(), true);
             return InteractionResult.FAIL;
         }
+
+        // PRD: break-on-use so loot table drops components.
+        // destroyBlock(..., true) triggers drops and removes the block.
+        boolean destroyed = level.destroyBlock(pos, true, player);
+        if (!destroyed) {
+            // This should be extremely rare; treat it as a non-fatal failure.
+            player.displayClientMessage(Component.translatable("message.brightbronze_horizons.spawner.break_failed"), true);
+            return InteractionResult.FAIL;
+        }
+
+        // PRD: announce success serverwide (no serverwide announcement on failures).
+        announceSpawn(serverLevel, player, tier, targetChunk, result.biomeId());
+
+        // Local confirmation (actionbar)
+        player.displayClientMessage(
+            Component.translatable(
+                "message.brightbronze_horizons.spawner.success",
+                tier.getName(), targetChunk.x, targetChunk.z, result.biomeId().toString()
+            ),
+            true
+        );
+        return InteractionResult.CONSUME;
     }
 
     /**
@@ -158,7 +169,7 @@ public class ChunkSpawnerBlock extends Block {
      * @param targetChunk The chunk position to spawn
      * @return true if successful, false otherwise
      */
-    private boolean attemptChunkSpawn(ServerLevel level, Player player, ChunkPos targetChunk) {
+    private SpawnAttemptResult attemptChunkSpawn(ServerLevel level, Player player, BlockPos spawnerPos, ChunkPos targetChunk) {
         BrightbronzeHorizons.LOGGER.info(
             "Chunk spawner activated: tier={}, target=({}, {}), player={}",
             tier.getName(), targetChunk.x, targetChunk.z, player.getName().getString()
@@ -173,40 +184,34 @@ public class ChunkSpawnerBlock extends Block {
                     "Target chunk ({}, {}) is already in playable area",
                     targetChunk.x, targetChunk.z
                 );
-                player.displayClientMessage(
-                    Component.translatable("message.brightbronze_horizons.spawner.already_spawned"),
-                    true
-                );
+                return SpawnAttemptResult.failure(Component.translatable("message.brightbronze_horizons.spawner.already_spawned"));
             } else {
                 BrightbronzeHorizons.LOGGER.warn(
                     "Target chunk ({}, {}) is not adjacent to playable area",
                     targetChunk.x, targetChunk.z
                 );
-                player.displayClientMessage(
-                    Component.translatable("message.brightbronze_horizons.spawner.not_adjacent"),
-                    true
-                );
+                return SpawnAttemptResult.failure(Component.translatable("message.brightbronze_horizons.spawner.not_adjacent"));
             }
-            return false;
         }
 
-        // Step 1: Select a biome from this tier's pool deterministically
-        List<Holder<Biome>> pool = BiomePoolManager.getBiomesForTier(level.registryAccess(), tier);
-        if (pool.isEmpty()) {
-            BrightbronzeHorizons.LOGGER.warn("No biomes available for tier {}", tier.getName());
-            return false;
+        // Step 1: Select a biome deterministically per PRD.
+        // - Coal: always spawns the biome the spawner is placed on.
+        // - Other tiers: if placed-on biome is eligible for the tier pool, use it 40% of the time; otherwise random.
+        SpawnAttemptResult selection = selectBiomeForSpawn(level, playableData, spawnerPos);
+        if (!selection.success()) {
+            return selection;
         }
 
-        int index = playableData.nextDeterministicInt(level.getServer(), pool.size());
-        Holder<Biome> biomeHolder = pool.get(index);
-        ResourceLocation biomeId = BiomePoolManager.getBiomeId(biomeHolder);
-        
-        if (biomeId == null) {
-            BrightbronzeHorizons.LOGGER.error("Could not get biome ID for selected biome");
-            return false;
-        }
+        ResourceLocation biomeId = selection.biomeId();
 
         BrightbronzeHorizons.LOGGER.info("Selected biome {} for tier {}", biomeId, tier.getName());
+
+        Registry<Biome> biomeRegistry = level.registryAccess().lookupOrThrow(Registries.BIOME);
+        Optional<Holder.Reference<Biome>> biomeHolderOpt = biomeRegistry.get(biomeId);
+        if (biomeHolderOpt.isEmpty()) {
+            return SpawnAttemptResult.failure(Component.translatable("message.brightbronze_horizons.spawner.unknown_biome"));
+        }
+        Holder<Biome> biomeHolder = biomeHolderOpt.get();
 
         // Step 2: Get or create the source dimension for this biome
         ServerLevel sourceLevel = SourceDimensionManager.getOrCreateSourceDimension(
@@ -222,7 +227,8 @@ public class ChunkSpawnerBlock extends Block {
             sourceLevel,
             sourceChunkPos,
             level,
-            targetChunk
+            targetChunk,
+            biomeHolder
         );
 
         if (success) {
@@ -236,9 +242,82 @@ public class ChunkSpawnerBlock extends Block {
 
             // Phase 7: one-time scripted mob spawns when a chunk is revealed.
             ChunkMobSpawner.onChunkSpawned(level, targetChunk, tier);
+            return SpawnAttemptResult.success(biomeId);
         }
 
-        return success;
+        BrightbronzeHorizons.LOGGER.warn(
+            "Chunk copy failed for tier {} at ({}, {}) biome {}",
+            tier.getName(), targetChunk.x, targetChunk.z, biomeId
+        );
+        return SpawnAttemptResult.failure(Component.translatable("message.brightbronze_horizons.spawner.copy_failed"));
+    }
+
+    private SpawnAttemptResult selectBiomeForSpawn(ServerLevel level, PlayableAreaData playableData, BlockPos spawnerPos) {
+        Holder<Biome> placedBiome = level.getBiome(spawnerPos);
+        ResourceLocation placedBiomeId = BiomePoolManager.getBiomeId(placedBiome);
+
+        if (tier == ChunkSpawnerTier.COAL) {
+            if (placedBiomeId == null) {
+                return SpawnAttemptResult.failure(Component.translatable("message.brightbronze_horizons.spawner.unknown_biome"));
+            }
+            return SpawnAttemptResult.success(placedBiomeId);
+        }
+
+        List<Holder<Biome>> pool = BiomePoolManager.getBiomesForTier(level.registryAccess(), tier);
+        if (pool.isEmpty()) {
+            BrightbronzeHorizons.LOGGER.warn("No biomes available for tier {}", tier.getName());
+            return SpawnAttemptResult.failure(Component.translatable("message.brightbronze_horizons.spawner.no_biomes"));
+        }
+
+        boolean placedIsEligible = placedBiomeId != null && poolContainsBiomeId(pool, placedBiomeId);
+        if (placedIsEligible) {
+            int roll = playableData.nextDeterministicInt(level.getServer(), 100);
+            if (roll < 40) {
+                return SpawnAttemptResult.success(placedBiomeId);
+            }
+        }
+
+        int index = playableData.nextDeterministicInt(level.getServer(), pool.size());
+        Holder<Biome> selected = pool.get(index);
+        ResourceLocation biomeId = BiomePoolManager.getBiomeId(selected);
+        if (biomeId == null) {
+            return SpawnAttemptResult.failure(Component.translatable("message.brightbronze_horizons.spawner.unknown_biome"));
+        }
+        return SpawnAttemptResult.success(biomeId);
+    }
+
+    private static boolean poolContainsBiomeId(List<Holder<Biome>> pool, ResourceLocation biomeId) {
+        for (Holder<Biome> holder : pool) {
+            ResourceLocation id = BiomePoolManager.getBiomeId(holder);
+            if (biomeId.equals(id)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static void announceSpawn(ServerLevel level, Player player, ChunkSpawnerTier tier, ChunkPos chunkPos, ResourceLocation biomeId) {
+        level.getServer().getPlayerList().broadcastSystemMessage(
+            Component.translatable(
+                "message.brightbronze_horizons.spawner.announce",
+                player.getName(),
+                tier.getName(),
+                chunkPos.x,
+                chunkPos.z,
+                biomeId.toString()
+            ),
+            false
+        );
+    }
+
+    private record SpawnAttemptResult(boolean success, ResourceLocation biomeId, Component failureMessage) {
+        static SpawnAttemptResult success(ResourceLocation biomeId) {
+            return new SpawnAttemptResult(true, biomeId, Component.empty());
+        }
+
+        static SpawnAttemptResult failure(Component failureMessage) {
+            return new SpawnAttemptResult(false, null, failureMessage);
+        }
     }
 
     private static Direction pickDeterministicCornerDirection(ServerLevel level, BlockPos pos, List<Direction> edgeDirections) {

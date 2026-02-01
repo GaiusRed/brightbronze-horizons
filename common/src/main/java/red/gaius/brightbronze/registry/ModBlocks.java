@@ -51,8 +51,9 @@ public final class ModBlocks {
     private static BlockBehaviour.Properties spawnerProperties(String name) {
         return BlockBehaviour.Properties.of()
                 .setId(key(name))
-                .strength(3.0f, 6.0f)
-                .requiresCorrectToolForDrops()
+                                // PRD: spawners should be easy to break (netherrack-like), and
+                                // activation consumes the block and should always drop via loot table.
+                                .strength(0.4f, 0.4f)
                 .sound(SoundType.METAL)
                 .lightLevel(state -> 7); // Slight glow to indicate magical nature
     }
@@ -60,6 +61,10 @@ public final class ModBlocks {
     public static final RegistrySupplier<Block> COAL_CHUNK_SPAWNER = BLOCKS.register(
             "coal_chunk_spawner",
             () -> new ChunkSpawnerBlock(spawnerProperties("coal_chunk_spawner"), ChunkSpawnerTier.COAL));
+
+    public static final RegistrySupplier<Block> COPPER_CHUNK_SPAWNER = BLOCKS.register(
+            "copper_chunk_spawner",
+            () -> new ChunkSpawnerBlock(spawnerProperties("copper_chunk_spawner"), ChunkSpawnerTier.COPPER));
 
     public static final RegistrySupplier<Block> IRON_CHUNK_SPAWNER = BLOCKS.register(
             "iron_chunk_spawner",

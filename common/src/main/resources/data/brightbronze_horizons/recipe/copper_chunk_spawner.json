@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "AAA",
+    "ABA",
+    "ACA"
+  ],
+  "key": {
+    "A": "brightbronze_horizons:brightbronze_ingot",
+    "B": "minecraft:copper_block",
+    "C": "minecraft:campfire"
+  },
+  "result": {
+    "id": "brightbronze_horizons:copper_chunk_spawner",
+    "count": 1
+  }
+}

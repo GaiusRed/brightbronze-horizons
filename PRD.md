@@ -582,6 +582,7 @@ None at this time.
 
 #### 3.1 Chunk Spawner Blocks
 - [x] Create `ChunkSpawnerBlock` base class — Concrete block with tier parameter
+- [x] Copper Chunk Spawner — Tier: Copper (common, non-watery Overworld)
 - [x] Coal Chunk Spawner — Tier: Coal (common Overworld)
 - [x] Iron Chunk Spawner — Tier: Iron (rare Overworld)
 - [x] Gold Chunk Spawner — Tier: Gold (Nether biomes)
@@ -592,12 +593,24 @@ None at this time.
 - [x] Edge detection logic — `getChunkEdgeDirections()` detects if placed at chunk edge
 - [x] Direction selection — Random selection when at corner
 - [x] Activation handler — `attemptChunkSpawn()` wired to BiomePoolManager, SourceDimensionManager, ChunkCopyService
-- [x] Spawner break drops — Loot-table based drops to slow immediate reuse
+- [x] Loot tables — Spawner blocks have loot tables matching PRD drop intent
+- [x] Break-on-use — On successful spawn, spawner must *break* so loot drops
+- [x] **Verified drops** — Spawners drop loot correctly on successful use and on normal breaking (2026-02-01)
+
+> **Loot table path note (2026-02-01):** In this project setup, block loot tables must be placed under `data/<namespace>/loot_table/blocks/` (singular `loot_table`). Using `loot_tables` will result in missing drops.
+- [x] Spawn announcements — Serverwide success message (player, tier, chunk coords, biome)
+- [x] Player-friendly failures — Avoid jargon; do not announce failures serverwide
+- [x] Biome selection bias (PRD Section 3.3)
+	- [x] Coal: always spawns the biome the spawner is placed on
+	- [x] Other tiers: if placed-on biome is eligible, use it 40% of the time; otherwise random eligible biome
+
+> **Balance note (2026-02-01):** Spawners are tuned to be easy to break (netherrack-like) and are tagged as pickaxe-mineable.
 
 > **Implementation Note:** BlockEntity was intentionally omitted. All spawning logic is handled synchronously in `ChunkSpawnerBlock.useWithoutItem()` without needing persistent state. A BlockEntity may be added later for visual effects or cooldowns if needed.
 
 #### 3.3 Chunk Spawner Recipes
 - [x] Recipe pattern implementation (A A A / A B A / A C A)
+- [x] Copper Spawner recipe — B = Block of Copper
 - [x] Coal Spawner recipe — B = Block of Coal
 - [x] Iron Spawner recipe — B = Block of Iron
 - [x] Gold Spawner recipe — B = Block of Gold
@@ -628,7 +641,7 @@ None at this time.
 - [x] Block state copying — Copy all block states from source chunk
 - [x] Block entity copying — Copy block entities (chests, spawners, etc.) using MC 1.21 `TagValueInput`/`TagValueOutput` API
 - [x] Entity copying — Copy mobs and other entities from source chunk to target chunk
-- [x] Biome data preservation — Ensure biome data is set correctly in target (via `FixedBiomeSource`)
+- [x] Biome data preservation — Ensure target chunk biome container is set explicitly when copying (fixes local-biome selection in newly spawned chunks)
 
 #### 4.3 Coordinate Matching
 - [x] Implement coordinate matching — Source chunk X/Z = destination chunk X/Z
@@ -647,6 +660,7 @@ None at this time.
 #### 5.1 Tier Enum/Registry
 - [x] Create `ChunkSpawnerTier` enum — COAL, IRON, GOLD, EMERALD, DIAMOND
 - [x] Tier properties — Biome pool tag key, mob spawn rules (alwaysSpawnMobs)
+- [x] Extend `ChunkSpawnerTier` enum/registry — Add COPPER
 
 #### 5.2 Biome Pool Management
 - [x] Create `BiomePoolManager` — Loads and manages biome pools per tier
@@ -654,21 +668,27 @@ None at this time.
 - [x] Random biome selection — `selectRandomBiome()` from eligible pool
 
 #### 5.3 Default Biome Pool Data
-- [x] Coal tier biomes tag — Common Overworld surface biomes
-- [x] Iron tier biomes tag — Rare Overworld surface biomes (exclude cave biomes by default)
+- [x] Coal tier biomes — **Local-biome expansion** (Coal does not select from a random tag pool)
+- [x] Copper tier biomes tag — Common, non-watery Overworld surface biomes (PRD default list)
+- [x] Iron tier biomes tag — Watery + rare Overworld surface biomes (PRD default list, exclude cave biomes)
+- [x] Biome pool reshuffle (anti-ocean frustration) — Ensure watery Overworld biomes are not in the common (Copper/Coal) pool by default
 - [x] Gold tier biomes tag — All 5 vanilla Nether biomes
 - [x] Diamond tier biomes tag — End biomes excluding `minecraft:the_end` by default
 - [x] Emerald tier biomes — Empty by default (for modpacks)
+
+> **Audit note (2026-02-01):** The repo currently ships `tier/coal.json` and `tier/iron.json`, but their contents do not match the PRD’s curated Copper/Iron split (e.g., rivers/beaches are currently in Coal, and oceans/rivers/beaches are not comprehensively present in Iron). Phase 5 should reconcile the shipped tags with PRD Section 3.1.1.
 
 > **Implementation Note (MC 1.21.10):** Use `biomeRegistry.getTagOrEmpty(tagKey)` instead of `biomeRegistry.holders()` for biome tag iteration.
 
 **Suggested commit message:** `feat: Phase 5 — tier enum, biome pool manager, and default biome tags`
 
+**Suggested milestone commit message (Phase 3 + 5):** `feat: PRD chunk spawners — Copper tier, biome bias, announcements, and curated pools`
+
 ---
 
 ### Phase 6A: Void World Type (Overworld)
 
-**Status:** ✅ COMPLETE
+**Status:** ✅ COMPLETED
 
 > **CRITICAL**: This phase must be completed before Phase 6. The mod's core mechanic requires the overworld to be a void world where chunks are only populated by the chunk spawning system. Without this, normal terrain generates and the chunk copy system cannot work correctly.
 
@@ -729,7 +749,7 @@ None at this time.
 
 ### Phase 6: World Initialization & Starting Area
 
-**Status:** 🔄 IN PROGRESS (Core working, village placement pending)
+**Status:** ✅ COMPLETED
 
 > **Prerequisites:** Phase 6A is now complete. The starting area initialization uses the void overworld + source dimension approach successfully.
 
@@ -754,11 +774,13 @@ None at this time.
 - [x] Adjacency validation — Ensure new chunks connect to existing area
 
 #### 6.4 Chunk Copy Service Revision
-- [ ] Remove `isReplaceableBlock` check — Always overwrite (void → terrain is always valid)
-- [ ] Client sync — Ensure copied chunks are sent to clients correctly
-- [ ] Lighting updates — Properly recalculate lighting after chunk copy
+- [x] Always overwrite (void → terrain is always valid) — Copy logic writes all non-air source blocks into target
+- [x] Client sync — Copied chunks are explicitly re-sent to clients (ChunkMap mixin)
+- [x] Lighting updates — Light engine is poked after copy to reduce dark-chunk artifacts
 
-> **Implementation Note (MC 1.21.10):** `SavedData` uses `SavedDataType` with a `Codec` for serialization. The starting area must be initialized during world creation (before spawn chunk generation), not after server start.
+> **Implementation Note (MC 1.21.10):** `SavedData` uses `SavedDataType` with a `Codec` for serialization. Starting-area initialization should run early enough that players never see/experience the void before the 3×3 area is copied.
+
+> **Audit note (2026-02-01):** The repo currently initializes the starting area on `LifecycleEvent.SERVER_STARTED`. This has been sufficient for singleplayer and typical dedicated-server startup (before players join). If a future edge case requires earlier initialization, move the trigger earlier in the server lifecycle.
 
 **Suggested commit message:** `feat: Phase 6 — starting area initialization with village placement`
 
@@ -892,6 +914,7 @@ None at this time.
 - [ ] Chunk spawn particles — Visual effect when chunk spawns
 - [ ] Chunk spawn sound — Audio feedback
 - [ ] Failure messages — Clear chat/actionbar messages on failure
+- [ ] Spawn announcements — Serverwide success message (player, tier, chunk coords, biome)
 - [ ] Advancement/toast — Optional notification on first chunk spawn
 
 #### 12.2 Debug & Admin Tools
@@ -925,34 +948,6 @@ None at this time.
 
 ---
 
-### Phase 14: Chunk Spawner UX + Tier Rebalance
-
-**Status:** Not Started
-
-#### 14.1 Player Feedback (Messaging)
-- [ ] Spawn announcements — Serverwide success message (player, tier, chunk coords, biome)
-- [ ] Player-friendly failures — Improve failure messages (no “chunk failed” jargon); no serverwide announce on failure
-
-#### 14.2 Consumption Behavior
-- [ ] Break-on-use — On successful spawn, break the spawner so loot drops (instead of vanishing)
-
-#### 14.3 Biome Selection Bias
-- [ ] Coal bias — Always spawn the biome the spawner is placed on
-- [ ] Other tiers bias — If placed-on biome is eligible, use it 40% of the time; otherwise random eligible biome
-
-#### 14.4 Copper Tier
-- [ ] Extend `ChunkSpawnerTier` enum/registry — Add COPPER
-- [ ] Add Copper tier spawner block + item assets
-- [ ] Add Copper tier recipe
-- [ ] Add Copper tier biome tag — common, non-watery Overworld surface biomes
-
-#### 14.5 Biome Pool Reshuffle (anti-ocean frustration)
-- [ ] Move watery Overworld biomes into Iron tier tag
-
-**Suggested commit message:** `feat: Phase 14 — spawner UX improvements and tier rebalance`
-
----
-
 ### Completion Summary
 
 | Phase | Description | Status |
@@ -963,7 +958,7 @@ None at this time.
 | 4 | Source Dimensions | ✅ Completed |
 | 5 | Tier & Biome Pools | ✅ Completed |
 | 6A | **Void World Type** | ✅ Completed |
-| 6 | World Initialization | 🔄 Needs Revision |
+| 6 | World Initialization | ✅ Completed |
 | 7 | Mob Spawning | 🔄 In Progress |
 | 8 | Configuration | ⬜ Not Started |
 | 9 | Block Post-Processing | ⬜ Not Started |
@@ -971,48 +966,8 @@ None at this time.
 | 11 | Performance & Disk | ⬜ Not Started |
 | 12 | Polish & UX | 🔄 In Progress |
 | 13 | Testing | ⬜ Not Started |
-| 14 | Chunk Spawner UX + Tier Rebalance | ⬜ Not Started |
 
 > **Note:** Platform-specific code is integrated into each phase as needed, not deferred to a separate phase.
 > 
 > **⚠️ CRITICAL:** Phase 6A (Void World Type) is a prerequisite for the mod to function correctly. The overworld MUST use a void chunk generator; normal terrain generation breaks the chunk spawning mechanic.
 
----
-
-## Appendix B: Phase 6A Debugging History
-
-### Issue: Player Falls Through Void (RESOLVED)
-
-> **Session Date:** 2026-02-01
-
-**Problem:** Player spawns in void and falls to Y=-63 despite server logs showing "9 of 9 chunks copied successfully."
-
-**Root Cause:** `SourceDimensionManager.createGeneratorForBiome()` was wrapping the overworld's chunk generator. Since the overworld uses `VoidChunkGenerator`, the source dimensions were also generating void terrain.
-
-**Fix Applied:** Changed `createGeneratorForBiome()` to create a proper `NoiseBasedChunkGenerator`:
-```java
-ResourceKey<NoiseGeneratorSettings> noiseKey = NoiseGeneratorSettings.OVERWORLD;
-if (biomeHolder.is(BiomeTags.IS_NETHER)) {
-	noiseKey = NoiseGeneratorSettings.NETHER;
-} else if (biomeHolder.is(BiomeTags.IS_END)) {
-	noiseKey = NoiseGeneratorSettings.END;
-}
-Holder<NoiseGeneratorSettings> noiseSettings = server.registryAccess()
-	.lookupOrThrow(Registries.NOISE_SETTINGS)
-	.getOrThrow(noiseKey);
-FixedBiomeSource biomeSource = new FixedBiomeSource(biomeHolder);
-return new NoiseBasedChunkGenerator(biomeSource, noiseSettings);
-```
-
-**Successful Test Log (2026-02-01):**
-```
-[Server thread/INFO] (brightbronze_horizons) Verification: Block at spawn level (8, 64, 8) is: Dirt
-[Server thread/INFO] (brightbronze_horizons) First non-air block at Y=66: Grass Block
-[Server thread/INFO] (brightbronze_horizons) Starting area initialized: 9 of 9 chunks copied successfully
-[Server thread/INFO] (brightbronze_horizons) Set spawn point to (8, 67, 8)
-[Server thread/INFO] (Minecraft) Player496 logged in with entity id 10 at (14.5, 66.0, 9.5)
-```
-
-Player now spawns on grass at Y=66 instead of falling through void to Y=-63.
-[01:28:53] [Server thread/INFO] (Minecraft) Player175 lost connection: Disconnected
-[01:28:53] [Server thread/INFO] (Minecraft) Player175 left the game

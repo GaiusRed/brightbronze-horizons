@@ -127,6 +127,13 @@ public final class ModItems {
                             .setId(key("coal_chunk_spawner"))
                             .arch$tab(CreativeModeTabs.FUNCTIONAL_BLOCKS)));
 
+    public static final RegistrySupplier<Item> COPPER_CHUNK_SPAWNER_ITEM = ITEMS.register(
+            "copper_chunk_spawner",
+            () -> new BlockItem(ModBlocks.COPPER_CHUNK_SPAWNER.get(),
+                    new Item.Properties()
+                            .setId(key("copper_chunk_spawner"))
+                            .arch$tab(CreativeModeTabs.FUNCTIONAL_BLOCKS)));
+
     public static final RegistrySupplier<Item> IRON_CHUNK_SPAWNER_ITEM = ITEMS.register(
             "iron_chunk_spawner",
             () -> new BlockItem(ModBlocks.IRON_CHUNK_SPAWNER.get(),

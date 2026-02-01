@@ -12,6 +12,12 @@ import red.gaius.brightbronze.BrightbronzeHorizons;
  */
 public enum ChunkSpawnerTier {
     /**
+     * Copper tier - Common, non-watery Overworld biomes (curated default pool).
+     * Mobs spawn only at night.
+     */
+    COPPER("copper", false),
+
+    /**
      * Coal tier - Common Overworld biomes (Plains, Forest, Taiga, etc.)
      * Mobs spawn only at night.
      */

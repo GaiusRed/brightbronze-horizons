@@ -1,0 +1,12 @@
+{
+  "replace": false,
+  "values": [
+    "brightbronze_horizons:brightbronze_block",
+    "brightbronze_horizons:coal_chunk_spawner",
+    "brightbronze_horizons:copper_chunk_spawner",
+    "brightbronze_horizons:iron_chunk_spawner",
+    "brightbronze_horizons:gold_chunk_spawner",
+    "brightbronze_horizons:emerald_chunk_spawner",
+    "brightbronze_horizons:diamond_chunk_spawner"
+  ]
+}

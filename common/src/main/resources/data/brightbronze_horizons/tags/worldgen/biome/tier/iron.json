@@ -1,5 +1,8 @@
 {
     "values": [
+        "#minecraft:is_ocean",
+        "#minecraft:is_river",
+        "#minecraft:is_beach",
         "minecraft:dark_forest",
         "minecraft:jungle",
         "minecraft:sparse_jungle",
@@ -12,6 +15,7 @@
         "minecraft:windswept_hills",
         "minecraft:windswept_gravelly_hills",
         "minecraft:windswept_forest",
+        "minecraft:meadow",
         "minecraft:stony_peaks",
         "minecraft:jagged_peaks",
         "minecraft:frozen_peaks",

@@ -4,6 +4,7 @@
   "generator.brightbronze_horizons.brightbronze": "Brightbronze Horizons",
   
   "block.brightbronze_horizons.brightbronze_block": "Block of Brightbronze",
+  "block.brightbronze_horizons.copper_chunk_spawner": "Copper Chunk Spawner",
   "block.brightbronze_horizons.coal_chunk_spawner": "Coal Chunk Spawner",
   "block.brightbronze_horizons.iron_chunk_spawner": "Iron Chunk Spawner",
   "block.brightbronze_horizons.gold_chunk_spawner": "Gold Chunk Spawner",
@@ -25,9 +26,13 @@
   "item.brightbronze_horizons.brightbronze_leggings": "Brightbronze Leggings",
   "item.brightbronze_horizons.brightbronze_boots": "Brightbronze Boots",
   
-  "message.brightbronze_horizons.spawner.not_at_edge": "Chunk Spawner must be placed at the edge of a chunk!",
-  "message.brightbronze_horizons.spawner.success": "Spawned %s tier chunk at (%d, %d)",
-  "message.brightbronze_horizons.spawner.failed": "Failed to spawn chunk. No eligible biomes in this tier.",
+  "message.brightbronze_horizons.spawner.not_at_edge": "Place the Chunk Spawner on the edge of a chunk.",
+  "message.brightbronze_horizons.spawner.success": "Spawned %s tier chunk at (%d, %d) - %s",
+  "message.brightbronze_horizons.spawner.announce": "%s spawned a %s tier chunk at (%d, %d) - %s",
+  "message.brightbronze_horizons.spawner.no_biomes": "This tier has no eligible biomes configured.",
+  "message.brightbronze_horizons.spawner.copy_failed": "Could not create the new chunk. Try again.",
+  "message.brightbronze_horizons.spawner.unknown_biome": "Could not determine a biome for this chunk.",
+  "message.brightbronze_horizons.spawner.break_failed": "Chunk was created, but the spawner could not break cleanly.",
   "message.brightbronze_horizons.spawner.not_implemented": "Chunk spawning not yet implemented - Phase 3 in progress!",
   "message.brightbronze_horizons.spawner.already_spawned": "This chunk has already been spawned!",
   "message.brightbronze_horizons.spawner.not_adjacent": "Can only spawn chunks adjacent to the playable area!"

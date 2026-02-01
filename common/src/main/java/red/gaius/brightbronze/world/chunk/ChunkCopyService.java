@@ -1,6 +1,7 @@
 package red.gaius.brightbronze.world.chunk;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Holder;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.DoubleTag;
 import net.minecraft.nbt.ListTag;
@@ -11,6 +12,9 @@ import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.biome.Biome;
+import net.minecraft.world.level.biome.BiomeResolver;
+import net.minecraft.world.level.biome.Climate;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.LeavesBlock;
@@ -24,6 +28,8 @@ import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
 import net.minecraft.world.phys.AABB;
 import red.gaius.brightbronze.BrightbronzeHorizons;
+
+import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 import java.util.Optional;
@@ -72,6 +78,24 @@ public class ChunkCopyService {
             ServerLevel targetLevel,
             ChunkPos targetChunkPos) {
 
+        return copyChunk(sourceLevel, sourceChunkPos, targetLevel, targetChunkPos, null);
+        }
+
+        /**
+         * Copies a chunk from a source dimension to a target dimension, optionally forcing the
+         * target chunk's biome container to a specific biome.
+         *
+         * <p>This is used by chunk spawners: blocks/entities are copied from a fixed-biome source
+         * dimension, and then the overworld chunk's biome data is updated so biome lookups (rain,
+         * fog, mob rules, and Coal "local-biome" behavior) match the spawned terrain.
+         */
+        public static boolean copyChunk(
+            ServerLevel sourceLevel,
+            ChunkPos sourceChunkPos,
+            ServerLevel targetLevel,
+            ChunkPos targetChunkPos,
+            @Nullable Holder<Biome> forcedTargetBiome) {
+
         BrightbronzeHorizons.LOGGER.debug("Copying chunk {} from {} to {} at {}",
                 sourceChunkPos, sourceLevel.dimension().location(),
                 targetLevel.dimension().location(), targetChunkPos);
@@ -95,6 +119,11 @@ public class ChunkCopyService {
 
             // Copy entities (mobs, item frames, armor stands, etc.)
             copyEntities(sourceLevel, sourceChunkPos, targetLevel, targetChunkPos);
+
+            // Ensure the target chunk biome matches the spawned biome (critical for Coal local-biome rule).
+            if (forcedTargetBiome != null) {
+                applyUniformBiome(targetChunk, forcedTargetBiome);
+            }
 
             // Mark target chunk as needing save and trigger updates
             targetChunk.markUnsaved();
@@ -124,6 +153,13 @@ public class ChunkCopyService {
             sourceLevel.setChunkForced(sourceChunkPos.x, sourceChunkPos.z, false);
             targetLevel.setChunkForced(targetChunkPos.x, targetChunkPos.z, false);
         }
+    }
+
+    private static void applyUniformBiome(LevelChunk targetChunk, Holder<Biome> biome) {
+        // Fill the chunk's biome container at quart resolution (4x4x4 per section).
+        BiomeResolver resolver = (x, y, z, sampler) -> biome;
+        targetChunk.fillBiomesFromNoise(resolver, Climate.empty());
+        targetChunk.markUnsaved();
     }
 
     /**

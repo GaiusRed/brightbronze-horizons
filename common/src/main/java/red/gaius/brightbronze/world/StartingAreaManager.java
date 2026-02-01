@@ -101,6 +101,14 @@ public class StartingAreaManager {
 
         // Get the starting biome
         ResourceLocation startingBiome = findStartingBiome(overworld, requestedCenterChunk);
+
+        Registry<Biome> biomeRegistry = overworld.registryAccess().lookupOrThrow(Registries.BIOME);
+        Optional<Holder.Reference<Biome>> startingBiomeHolderOpt = biomeRegistry.get(startingBiome);
+        if (startingBiomeHolderOpt.isEmpty()) {
+            BrightbronzeHorizons.LOGGER.error("Cannot initialize starting area: unknown biome {}", startingBiome);
+            return false;
+        }
+        Holder<Biome> startingBiomeHolder = startingBiomeHolderOpt.get();
         
         BrightbronzeHorizons.LOGGER.info("Using starting biome: {}", startingBiome);
 
@@ -128,7 +136,8 @@ public class StartingAreaManager {
                 sourceLevel,
                 chunkPos,  // Source coords = target coords (per PRD)
                 overworld,
-                chunkPos
+                chunkPos,
+                startingBiomeHolder
             );
             
             if (success) {
@@ -160,15 +169,6 @@ public class StartingAreaManager {
             // Get the chunk to ensure it's loaded
             overworld.getChunk(chunkPos.x, chunkPos.z);
         }
-        
-        // Verify the center chunk actually has blocks after reload
-        BlockPos testPos = centerChunk.getMiddleBlockPosition(64);
-        BlockState testState = overworld.getBlockState(testPos);
-        BrightbronzeHorizons.LOGGER.debug(
-            "Verification: Block at spawn level ({}, {}, {}) is: {}",
-            testPos.getX(), testPos.getY(), testPos.getZ(),
-            testState.getBlock().getName().getString()
-        );
 
         // Mark as initialized even if some chunks failed
         // (graceful degradation - player can still play)
