@@ -6,7 +6,6 @@ import net.minecraft.core.Holder;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.util.RandomSource;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.ChunkPos;
@@ -25,7 +24,6 @@ import red.gaius.brightbronze.world.dimension.SourceDimensionManager;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.util.Random;
 
 /**
  * Base class for all chunk spawner blocks.
@@ -88,8 +86,8 @@ public class ChunkSpawnerBlock extends Block {
         if (edgeDirections.size() == 1) {
             expansionDirection = edgeDirections.get(0);
         } else {
-            // At a corner - pick random direction
-            expansionDirection = edgeDirections.get(new Random().nextInt(edgeDirections.size()));
+            // At a corner - pick deterministic direction (seed + position) for reproducibility
+            expansionDirection = pickDeterministicCornerDirection(serverLevel, pos, edgeDirections);
         }
 
         // Get the target chunk position
@@ -191,19 +189,15 @@ public class ChunkSpawnerBlock extends Block {
             return false;
         }
 
-        // Step 1: Select a random biome from this tier's pool
-        Optional<Holder<Biome>> selectedBiome = BiomePoolManager.selectRandomBiome(
-            level.registryAccess(),
-            tier,
-            RandomSource.create()
-        );
-
-        if (selectedBiome.isEmpty()) {
+        // Step 1: Select a biome from this tier's pool deterministically
+        List<Holder<Biome>> pool = BiomePoolManager.getBiomesForTier(level.registryAccess(), tier);
+        if (pool.isEmpty()) {
             BrightbronzeHorizons.LOGGER.warn("No biomes available for tier {}", tier.getName());
             return false;
         }
 
-        Holder<Biome> biomeHolder = selectedBiome.get();
+        int index = playableData.nextDeterministicInt(level.getServer(), pool.size());
+        Holder<Biome> biomeHolder = pool.get(index);
         ResourceLocation biomeId = BiomePoolManager.getBiomeId(biomeHolder);
         
         if (biomeId == null) {
@@ -244,5 +238,20 @@ public class ChunkSpawnerBlock extends Block {
         }
 
         return success;
+    }
+
+    private static Direction pickDeterministicCornerDirection(ServerLevel level, BlockPos pos, List<Direction> edgeDirections) {
+        // Hash seed + position to pick stable direction for this placement.
+        long seed = level.getSeed();
+        long key = seed ^ pos.asLong() ^ 0x9E3779B97F4A7C15L;
+        long mixed = mix64(key);
+        int idx = (int) Math.floorMod(mixed, edgeDirections.size());
+        return edgeDirections.get(idx);
+    }
+
+    private static long mix64(long z) {
+        z = (z ^ (z >>> 30)) * 0xBF58476D1CE4E5B9L;
+        z = (z ^ (z >>> 27)) * 0x94D049BB133111EBL;
+        return z ^ (z >>> 31);
     }
 }

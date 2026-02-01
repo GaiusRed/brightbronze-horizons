@@ -49,7 +49,8 @@ public class PlayableAreaData extends SavedData {
         instance.group(
             Codec.BOOL.fieldOf("initialized").forGetter(data -> data.initialized),
             CHUNK_POS_CODEC.fieldOf("spawn_chunk").forGetter(data -> data.spawnChunk),
-            CHUNK_POS_CODEC.listOf().fieldOf("spawned_chunks").forGetter(data -> new ArrayList<>(data.spawnedChunks))
+            CHUNK_POS_CODEC.listOf().fieldOf("spawned_chunks").forGetter(data -> new ArrayList<>(data.spawnedChunks)),
+            Codec.LONG.optionalFieldOf("rng_state", 0L).forGetter(data -> data.rngState)
         ).apply(instance, PlayableAreaData::new)
     );
     
@@ -71,6 +72,14 @@ public class PlayableAreaData extends SavedData {
     private ChunkPos spawnChunk;
 
     /**
+     * Persistent RNG state for reproducible biome selection.
+     *
+     * <p>We intentionally store our own state (instead of using RandomSource directly)
+     * so selection remains deterministic across restarts.
+     */
+    private long rngState;
+
+    /**
      * Creates a new empty PlayableAreaData.
      * Used for new worlds.
      */
@@ -78,16 +87,18 @@ public class PlayableAreaData extends SavedData {
         this.spawnedChunks = new HashSet<>();
         this.initialized = false;
         this.spawnChunk = new ChunkPos(0, 0);
+        this.rngState = 0L;
     }
     
     /**
      * Creates PlayableAreaData from loaded data.
      * Used by the Codec during deserialization.
      */
-    private PlayableAreaData(boolean initialized, ChunkPos spawnChunk, List<ChunkPos> spawnedChunks) {
+    private PlayableAreaData(boolean initialized, ChunkPos spawnChunk, List<ChunkPos> spawnedChunks, long rngState) {
         this.initialized = initialized;
         this.spawnChunk = spawnChunk;
         this.spawnedChunks = new HashSet<>(spawnedChunks);
+        this.rngState = rngState;
         
         BrightbronzeHorizons.LOGGER.debug(
             "Loaded PlayableAreaData: {} chunks, initialized={}",
@@ -128,6 +139,51 @@ public class PlayableAreaData extends SavedData {
         this.initialized = true;
         this.spawnChunk = spawnChunk;
         setDirty();
+    }
+
+    /**
+     * Returns a deterministic random int in [0, bound).
+     *
+     * <p>Uses a SplitMix64-style step and persists the state to disk.
+     */
+    public int nextDeterministicInt(MinecraftServer server, int bound) {
+        if (bound <= 0) {
+            throw new IllegalArgumentException("bound must be > 0");
+        }
+
+        ensureRngInitialized(server);
+
+        // SplitMix64 increment
+        rngState += 0x9E3779B97F4A7C15L;
+        long mixed = mix64(rngState);
+
+        setDirty();
+        return (int) Math.floorMod(mixed, bound);
+    }
+
+    private void ensureRngInitialized(MinecraftServer server) {
+        if (rngState != 0L) {
+            return;
+        }
+
+        long worldSeed = server.getWorldData().worldGenOptions().seed();
+        long chunkKey = (((long) spawnChunk.x) << 32) ^ (spawnChunk.z & 0xFFFFFFFFL);
+
+        // Fixed odd constant to namespace our RNG from any future RNG uses.
+        rngState = mix64(worldSeed ^ chunkKey ^ 0xD1B54A32D192ED03L);
+
+        // Avoid zero because we use it as "uninitialized".
+        if (rngState == 0L) {
+            rngState = 0x9E3779B97F4A7C15L;
+        }
+
+        setDirty();
+    }
+
+    private static long mix64(long z) {
+        z = (z ^ (z >>> 30)) * 0xBF58476D1CE4E5B9L;
+        z = (z ^ (z >>> 27)) * 0x94D049BB133111EBL;
+        return z ^ (z >>> 31);
     }
 
     /**

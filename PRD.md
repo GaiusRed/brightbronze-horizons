@@ -709,12 +709,16 @@ None at this time.
 - [x] Revise `StartingAreaManager` — Copy 3×3 chunks from Plains source dimension into void overworld
 - [x] Spawn point placement — Set spawn inside the copied 3×3 area
 - [x] Chunk copy timing — Currently runs during SERVER_STARTED (working for singleplayer)
-- [ ] Village requirement — Ensure source dimension chunk contains village structures
+- [x] Village requirement — Choose a starting center chunk near a village in the Plains source dimension (best effort)
 
 #### 6.2 Village Placement Strategy
-- [ ] Village detection — Scan Plains source dimension for village locations
-- [ ] Coordinate selection — Choose starting chunk coords where village exists in source dimension
-- [ ] Fallback behavior — If no village found within search radius, use best available location
+- [x] Village detection — Locate nearest village in Plains source dimension (same mechanism as `/locate`)
+- [x] Coordinate selection — Center the 3×3 starting area on the located village’s chunk
+- [x] Fallback behavior — If no village found within bounded radius, fall back to spawn-centered start
+
+> **Implementation Note (2026-02-01):** The “village start” does **not** break seamless Plains spawning.
+> Chunk sourcing still uses absolute chunk X/Z coordinate matching (source chunk coords == destination chunk coords).
+> Choosing a different starting center only changes which chunk coordinates are revealed first.
 
 #### 6.3 Playable Area Tracking
 - [x] Create `PlayableAreaData` — Server-level saved data tracking spawned chunks (using MC 1.21 Codec-based SavedData API)
@@ -822,9 +826,14 @@ None at this time.
 - [ ] Concurrent players — Handle multiple players spawning chunks
 
 #### 10.3 Persistence
-- [ ] Deterministic RNG — Seeded RNG for reproducible biome selection
+- [x] Deterministic RNG — Persistent deterministic RNG for reproducible biome selection (SavedData-backed)
 - [ ] State persistence — Save/load RNG state, spawned chunk tracking
 - [ ] Restart consistency — Same seed + config = same results
+
+> **Implementation Note (2026-02-01):** Chunk spawner biome selection is now deterministic across restarts.
+> Corner-direction choice (when placed exactly on a chunk corner) is also deterministic (seed + position).
+
+> **PRD Alignment Note (2026-02-01):** Default Iron biome tag no longer includes cave biomes.
 
 **Suggested commit message:** `feat: Phase 10 — multiplayer support, thread safety, and persistence`
 
