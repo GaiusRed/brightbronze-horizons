@@ -8,11 +8,13 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.biome.Biome;
+import net.minecraft.world.level.biome.FixedBiomeSource;
 import net.minecraft.world.level.chunk.ChunkGenerator;
 import net.minecraft.world.level.dimension.BuiltinDimensionTypes;
+import net.minecraft.world.level.levelgen.NoiseBasedChunkGenerator;
+import net.minecraft.world.level.levelgen.NoiseGeneratorSettings;
 import red.gaius.brightbronze.BrightbronzeHorizons;
 import red.gaius.brightbronze.registry.ModDimensions;
-import red.gaius.brightbronze.world.gen.SingleBiomeChunkGenerator;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -46,7 +48,7 @@ public class SourceDimensionManager {
      * 
      * <p>If the dimension already exists (either from a previous call or from saved data),
      * the existing dimension is returned. Otherwise, a new dimension is dynamically created
-     * with a {@link SingleBiomeChunkGenerator} that wraps the overworld generator.
+     * with a {@link NoiseBasedChunkGenerator} using overworld noise settings and a fixed biome source.
      * 
      * @param server The Minecraft server
      * @param biomeId The biome's resource location (e.g., "minecraft:plains")
@@ -72,7 +74,7 @@ public class SourceDimensionManager {
         }
 
         // Create the chunk generator for this biome
-        SingleBiomeChunkGenerator generator = createGeneratorForBiome(server, biomeId);
+        ChunkGenerator generator = createGeneratorForBiome(server, biomeId);
         if (generator == null) {
             BrightbronzeHorizons.LOGGER.error(
                 "Failed to create chunk generator for biome {}. Using overworld as fallback.",
@@ -109,26 +111,18 @@ public class SourceDimensionManager {
     }
 
     /**
-     * Creates a SingleBiomeChunkGenerator for the specified biome.
-     * This can be used when setting up dimensions through data packs or other means.
+     * Creates a NoiseBasedChunkGenerator for the specified biome.
+     * This creates a proper terrain generator (not void!) that forces all chunks to use
+     * a single biome.
      * 
      * @param server The Minecraft server
      * @param biomeId The biome's resource location
-     * @return A configured SingleBiomeChunkGenerator, or null if the biome doesn't exist
+     * @return A configured ChunkGenerator, or null if setup fails
      */
-    public static SingleBiomeChunkGenerator createGeneratorForBiome(
+    public static ChunkGenerator createGeneratorForBiome(
             MinecraftServer server, 
             ResourceLocation biomeId) {
         
-        ServerLevel overworld = server.getLevel(Level.OVERWORLD);
-        if (overworld == null) {
-            BrightbronzeHorizons.LOGGER.error("Cannot create generator: Overworld not loaded");
-            return null;
-        }
-
-        // Get the overworld's chunk generator as our parent
-        ChunkGenerator overworldGenerator = overworld.getChunkSource().getGenerator();
-
         // Resolve the biome
         ResourceKey<Biome> biomeKey = ResourceKey.create(Registries.BIOME, biomeId);
         Holder<Biome> biomeHolder = server.registryAccess()
@@ -141,8 +135,25 @@ public class SourceDimensionManager {
             return null;
         }
 
-        // Create the single-biome chunk generator
-        return new SingleBiomeChunkGenerator(overworldGenerator, biomeHolder);
+        // Get the overworld noise settings - this is what generates actual terrain!
+        Holder<NoiseGeneratorSettings> noiseSettings = server.registryAccess()
+                .lookupOrThrow(Registries.NOISE_SETTINGS)
+                .getOrThrow(NoiseGeneratorSettings.OVERWORLD);
+
+        // Create a fixed biome source that always returns our target biome
+        FixedBiomeSource biomeSource = new FixedBiomeSource(biomeHolder);
+
+        // Create the noise-based chunk generator with overworld settings
+        // This will generate proper terrain (stone, dirt, grass, caves, ores, etc.)
+        // but use only our specified biome for surface, features, and mob spawns
+        NoiseBasedChunkGenerator generator = new NoiseBasedChunkGenerator(biomeSource, noiseSettings);
+        
+        BrightbronzeHorizons.LOGGER.debug(
+            "Created NoiseBasedChunkGenerator for biome {} with overworld settings",
+            biomeId
+        );
+        
+        return generator;
     }
 
     /**

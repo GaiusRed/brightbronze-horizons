@@ -88,16 +88,29 @@ public class ChunkCopyService {
             // Copy blocks
             int minY = targetLevel.getMinY();
             int maxY = targetLevel.getMaxY();
-            copyBlocks(sourceLevel, sourceChunkPos, targetLevel, targetChunkPos, minY, maxY + 1);
+            int blocksCopied = copyBlocks(sourceLevel, sourceChunkPos, targetLevel, targetChunkPos, minY, maxY + 1);
+            
+            BrightbronzeHorizons.LOGGER.debug("Copied {} non-air blocks to chunk ({}, {})", 
+                blocksCopied, targetChunkPos.x, targetChunkPos.z);
 
             // Copy entities (mobs, item frames, armor stands, etc.)
             copyEntities(sourceLevel, sourceChunkPos, targetLevel, targetChunkPos);
 
-            // Mark target chunk as needing save
+            // Mark target chunk as needing save and trigger updates
             targetChunk.markUnsaved();
             
-            // Force chunk lighting and neighbor updates
-            targetLevel.getChunkSource().getLightEngine().checkBlock(targetChunkPos.getMiddleBlockPosition(0));
+            // Force full light update for the chunk
+            for (int y = minY; y <= maxY; y += 16) {
+                BlockPos lightPos = new BlockPos(targetChunkPos.getMiddleBlockX(), y, targetChunkPos.getMiddleBlockZ());
+                targetLevel.getChunkSource().getLightEngine().checkBlock(lightPos);
+            }
+            
+            // Force the chunk to be saved to disk immediately
+            // This ensures that when clients request the chunk, they get the modified version
+            targetLevel.getChunkSource().save(false);
+
+            // Force resync chunk to all connected players (helps for chunk spawner use case)
+            forceResyncChunk(targetLevel, targetChunkPos);
 
             BrightbronzeHorizons.LOGGER.debug("Successfully copied chunk {} -> {}", sourceChunkPos, targetChunkPos);
             return true;
@@ -122,8 +135,9 @@ public class ChunkCopyService {
      * @param targetChunkPos The target chunk position
      * @param fromY The minimum Y level (inclusive)
      * @param toY The maximum Y level (exclusive)
+     * @return The number of non-air blocks copied
      */
-    public static void copyBlocks(
+    public static int copyBlocks(
             ServerLevel sourceLevel,
             ChunkPos sourceChunkPos,
             ServerLevel targetLevel,
@@ -136,6 +150,8 @@ public class ChunkCopyService {
 
         BlockPos.MutableBlockPos sourcePos = new BlockPos.MutableBlockPos();
         BlockPos.MutableBlockPos targetPos = new BlockPos.MutableBlockPos();
+        
+        int blocksCopied = 0;
 
         for (int y = fromY; y < toY; y++) {
             for (int z = sourceChunkPos.getMinBlockZ(); z <= sourceChunkPos.getMaxBlockZ(); z++) {
@@ -143,40 +159,29 @@ public class ChunkCopyService {
                     sourcePos.set(x, y, z);
                     targetPos.set(x + xOffset, y, z + zOffset);
 
-                    // Check if we should overwrite this block
-                    BlockState existingState = targetLevel.getBlockState(targetPos);
-                    if (isReplaceableBlock(existingState)) {
-                        BlockState sourceState = sourceLevel.getBlockState(sourcePos);
-                        
-                        // Prevent leaf decay by marking leaves as persistent
-                        if (sourceState.hasProperty(LeavesBlock.PERSISTENT)) {
-                            sourceState = sourceState.setValue(LeavesBlock.PERSISTENT, true);
-                        }
-
-                        // Set the block
-                        targetLevel.setBlock(targetPos, sourceState, Block.UPDATE_ALL);
-
-                        // Copy block entity data if present
-                        copyBlockEntity(sourceLevel, sourcePos, targetLevel, targetPos);
+                    BlockState sourceState = sourceLevel.getBlockState(sourcePos);
+                    
+                    // Skip air blocks for efficiency (void chunks are already air)
+                    if (sourceState.isAir()) {
+                        continue;
                     }
+                    
+                    // Prevent leaf decay by marking leaves as persistent
+                    if (sourceState.hasProperty(LeavesBlock.PERSISTENT)) {
+                        sourceState = sourceState.setValue(LeavesBlock.PERSISTENT, true);
+                    }
+
+                    // Set the block with all update flags
+                    targetLevel.setBlock(targetPos, sourceState, Block.UPDATE_ALL);
+                    blocksCopied++;
+
+                    // Copy block entity data if present
+                    copyBlockEntity(sourceLevel, sourcePos, targetLevel, targetPos);
                 }
             }
         }
-    }
-
-    /**
-     * Checks if a block state should be replaced during chunk copy.
-     * 
-     * <p>For starting area initialization and chunk spawning, we want to completely
-     * overwrite the destination chunk with source content. This ensures the spawned
-     * terrain matches the source dimension exactly.
-     * 
-     * @param state The existing block state
-     * @return true if this block can be overwritten (always true for complete copy)
-     */
-    private static boolean isReplaceableBlock(BlockState state) {
-        // Always replace - we want complete chunk overwrites for the chunk spawning mechanic
-        return true;
+        
+        return blocksCopied;
     }
 
     /**
@@ -343,5 +348,33 @@ public class ChunkCopyService {
         
         // If there's bedrock at the bottom, this chunk hasn't been spawned
         return state.is(Blocks.BEDROCK) || state.isAir();
+    }
+
+    /**
+     * Forces a chunk to be resent to all players tracking it.
+     * 
+     * <p>This is essential after modifying chunk data (copying blocks from source dimensions)
+     * because the normal block update flags only notify already-connected clients about
+     * individual block changes. Clients who load the chunk later, or clients who need a
+     * full chunk refresh, won't see the changes without this explicit resync.
+     * 
+     * @param level The server level containing the chunk
+     * @param chunkPos The position of the chunk to resync
+     */
+    private static void forceResyncChunk(ServerLevel level, ChunkPos chunkPos) {
+        try {
+            // Cast ChunkMap to our mixin interface
+            if (level.getChunkSource().chunkMap instanceof ControllableChunkMap controllable) {
+                controllable.brightbronze$forceResyncChunk(chunkPos);
+                BrightbronzeHorizons.LOGGER.debug("Forced resync of chunk ({}, {})", chunkPos.x, chunkPos.z);
+            } else {
+                BrightbronzeHorizons.LOGGER.warn(
+                    "ChunkMap does not implement ControllableChunkMap - chunk resync skipped for ({}, {})",
+                    chunkPos.x, chunkPos.z
+                );
+            }
+        } catch (Exception e) {
+            BrightbronzeHorizons.LOGGER.warn("Failed to force chunk resync: {}", e.getMessage());
+        }
     }
 }

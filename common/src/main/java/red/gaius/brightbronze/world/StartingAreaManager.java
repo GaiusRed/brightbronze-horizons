@@ -14,6 +14,7 @@ import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.biome.Biomes;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.structure.Structure;
 import net.minecraft.world.level.storage.LevelData;
 import net.minecraft.world.level.storage.ServerLevelData;
@@ -106,6 +107,8 @@ public class StartingAreaManager {
         List<ChunkPos> startingChunks = getStartingChunks(centerChunk);
         
         boolean allSuccess = true;
+        int totalBlocksCopied = 0;
+        
         for (ChunkPos chunkPos : startingChunks) {
             boolean success = ChunkCopyService.copyChunk(
                 sourceLevel,
@@ -124,6 +127,34 @@ public class StartingAreaManager {
                 allSuccess = false;
             }
         }
+        
+        // Force save the world to ensure chunk modifications are persisted
+        BrightbronzeHorizons.LOGGER.info("Saving modified chunks...");
+        overworld.save(null, true, false);
+        
+        // Force unload and reload all starting chunks to ensure fresh state
+        // This is necessary because ChunkHolder caches the original void chunk state
+        BrightbronzeHorizons.LOGGER.info("Refreshing chunk cache...");
+        for (ChunkPos chunkPos : startingChunks) {
+            // Unforce load, let it naturally unload  
+            overworld.setChunkForced(chunkPos.x, chunkPos.z, false);
+        }
+        
+        // Force load them again - this will load the saved version from disk
+        for (ChunkPos chunkPos : startingChunks) {
+            overworld.setChunkForced(chunkPos.x, chunkPos.z, true);
+            // Get the chunk to ensure it's loaded
+            overworld.getChunk(chunkPos.x, chunkPos.z);
+        }
+        
+        // Verify the center chunk actually has blocks after reload
+        BlockPos testPos = centerChunk.getMiddleBlockPosition(64);
+        BlockState testState = overworld.getBlockState(testPos);
+        BrightbronzeHorizons.LOGGER.debug(
+            "Verification: Block at spawn level ({}, {}, {}) is: {}",
+            testPos.getX(), testPos.getY(), testPos.getZ(),
+            testState.getBlock().getName().getString()
+        );
 
         // Mark as initialized even if some chunks failed
         // (graceful degradation - player can still play)

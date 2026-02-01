@@ -22,3 +22,6 @@ build
 eclipse
 run
 runs
+# decompiled minecraft sources (for reference only)
+tmp/mc-sources
+tmp/mc-sources.zip
