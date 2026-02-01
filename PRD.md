@@ -1,6 +1,6 @@
 # Brightbronze Horizons — Product Requirements Document (PRD)
 
-**Last updated:** 2026-01-31
+**Last updated:** 2026-02-01
 
 This document defines the intended player experience and the engineering requirements for Brightbronze Horizons (Fabric + NeoForge, Architectury). It is written for implementers; it focuses on behavior and interfaces, not specific code.
 
@@ -83,8 +83,9 @@ This section defines the required gameplay and system behavior for the “Chunk 
 
 Chunk Spawners exist in the following tiers:
 
-- **Coal**: common Overworld biome chunks.
-- **Iron**: rarer Overworld biome chunks.
+- **Copper**: common, non-watery Overworld biome chunks.
+- **Coal**: local-biome expansion (always spawns the biome it is placed on).
+- **Iron**: watery + rare Overworld biome chunks.
 - **Gold**: Nether biome chunks.
 - **Emerald**: custom/modded biomes (from supported mods).
 - **Diamond**: End biome chunks.
@@ -114,6 +115,10 @@ Overworld tiers should target **surface biomes** by default (exclude cave biomes
 
 **Coal (Common Overworld) — default list:**
 
+> **Note:** Coal is “local biome expansion” and does not select from a random biome pool.
+
+**Copper (Common, non-watery Overworld) — default list:**
+
 - Plains
 - Forest
 - Birch Forest
@@ -122,16 +127,17 @@ Overworld tiers should target **surface biomes** by default (exclude cave biomes
 - Savanna
 - Desert
 
-**Iron (Rare Overworld) — default list:**
+**Iron (Watery + rare Overworld) — default list:**
 
-- Dark Forest
-- Jungle
-- Bamboo Jungle
-- Sparse Jungle
-- Badlands (and variants)
+- Ocean variants (all)
+- River variants (all)
+- Beach variants (all)
 - Swamp
 - Mangrove Swamp
-- Windswept Hills family (Windswept Hills / Windswept Forest / Windswept Gravelly Hills / Windswept Savanna)
+- Dark Forest
+- Jungle (and variants)
+- Badlands (and variants)
+- Windswept Hills family
 - Meadow
 - Cherry Grove
 - Grove
@@ -143,7 +149,9 @@ Overworld tiers should target **surface biomes** by default (exclude cave biomes
 
 **Gold (Nether) — default list:** all vanilla Nether biomes.
 
-**Diamond (End) — default list:** all vanilla End biomes.
+**Diamond (End) — default list:** all vanilla End biomes, excluding `minecraft:the_end` by default.
+
+> **Safety note:** `minecraft:the_end` is excluded by default because it can include the End dragon fight spike/pillar setup, which is not appropriate to pull into the Overworld as pocket terrain. Packs may opt in explicitly.
 
 ### 3.2 Crafting Recipe Requirements
 
@@ -165,6 +173,7 @@ Notes:
 
 Default tier block mapping for **B**:
 
+- Copper: Block of Copper
 - Coal: Block of Coal
 - Iron: Block of Iron
 - Gold: Block of Gold
@@ -182,8 +191,23 @@ Core requirements:
 
 Selection requirements:
 
-- **Biome selection is random** within the tier’s eligible biome pool.
+- **Biome selection bias (anti-ocean frustration):**
+	- **Coal tier:** always spawns the same biome that the spawner is placed on.
+	- **All other tiers:** if the spawner is placed on a biome that is eligible for that tier’s pool, there is a **40% chance** to spawn that same biome; otherwise select randomly from the tier’s eligible biome pool.
 - **Chunk location is not random:** the source chunk coordinates must match the destination chunk coordinates (see Section 4.3).
+
+Messaging requirements:
+
+- On successful spawn, announce serverwide: who spawned it, which tier, chunk coordinates, and the selected biome.
+- On failure, provide player-friendly feedback (avoid jargon like “chunk failed”). Do not announce failures serverwide.
+
+Consumption requirements:
+
+- Instead of disappearing on use, the chunk spawner should break on successful use so its components drop as loot.
+- Breaking a chunk spawner should drop:
+	- exactly **1** charcoal
+	- **3–6** of the tier ingredient item (e.g., coal/iron_ingot/gold_ingot/emerald/diamond)
+	- **1–3** Brightbronze Ingots
 
 Multiplayer/permissions:
 
@@ -568,6 +592,7 @@ None at this time.
 - [x] Edge detection logic — `getChunkEdgeDirections()` detects if placed at chunk edge
 - [x] Direction selection — Random selection when at corner
 - [x] Activation handler — `attemptChunkSpawn()` wired to BiomePoolManager, SourceDimensionManager, ChunkCopyService
+- [x] Spawner break drops — Loot-table based drops to slow immediate reuse
 
 > **Implementation Note:** BlockEntity was intentionally omitted. All spawning logic is handled synchronously in `ChunkSpawnerBlock.useWithoutItem()` without needing persistent state. A BlockEntity may be added later for visual effects or cooldowns if needed.
 
@@ -629,10 +654,10 @@ None at this time.
 - [x] Random biome selection — `selectRandomBiome()` from eligible pool
 
 #### 5.3 Default Biome Pool Data
-- [x] Coal tier biomes tag — Plains, Forest, Birch Forest, Taiga, Snowy Plains/Taiga, Savanna, Desert, Meadow, Beach, River variants
-- [x] Iron tier biomes tag — Dark Forest, Jungle variants, Badlands, Swamp, Mountains, Caves (Lush/Dripstone/Deep Dark)
+- [x] Coal tier biomes tag — Common Overworld surface biomes
+- [x] Iron tier biomes tag — Rare Overworld surface biomes (exclude cave biomes by default)
 - [x] Gold tier biomes tag — All 5 vanilla Nether biomes
-- [x] Diamond tier biomes tag — All 5 vanilla End biomes
+- [x] Diamond tier biomes tag — End biomes excluding `minecraft:the_end` by default
 - [x] Emerald tier biomes — Empty by default (for modpacks)
 
 > **Implementation Note (MC 1.21.10):** Use `biomeRegistry.getTagOrEmpty(tagKey)` instead of `biomeRegistry.holders()` for biome tag iteration.
@@ -674,7 +699,10 @@ None at this time.
 >
 > **Fix:** Changed `createGeneratorForBiome()` to create a proper `NoiseBasedChunkGenerator` with:
 > - `FixedBiomeSource` that returns only the target biome
-> - `NoiseGeneratorSettings.OVERWORLD` for standard terrain generation
+> - Appropriate `NoiseGeneratorSettings` based on biome tags:
+>   - Overworld → `NoiseGeneratorSettings.OVERWORLD`
+>   - Nether → `NoiseGeneratorSettings.NETHER`
+>   - End → `NoiseGeneratorSettings.END`
 >
 > This ensures source dimensions generate proper Minecraft terrain regardless of what generator the overworld uses.
 >
@@ -738,22 +766,22 @@ None at this time.
 
 ### Phase 7: Mob Spawning on Chunk Spawn
 
-**Status:** Not Started
+**Status:** 🔄 In Progress (hardcoded defaults; Phase 8 will data-drive)
 
 #### 7.1 Spawn Event System
 - [ ] Create `ChunkSpawnMobEvent` — Triggered when chunk is spawned
-- [ ] Time-of-day checks — Coal/Iron tiers spawn mobs only at night
-- [ ] Always-spawn tiers — Gold/Diamond spawn regardless of time
+- [x] Time-of-day checks — Coal/Iron tiers spawn mobs only at night
+- [x] Always-spawn tiers — Gold/Emerald/Diamond spawn regardless of time
 
 #### 7.2 Spawn Configuration
-- [ ] Create `MobSpawnRule` data class — Entity type, min/max count, conditions
+- [x] Create `MobSpawnRule` data class — Entity type, min/max count, conditions
 - [ ] Spawn table loading — Load from data pack
-- [ ] Difficulty/gamerule respect — Check `doMobSpawning`, difficulty level
+- [x] Difficulty/gamerule respect — Check `doMobSpawning`, difficulty level
 
 #### 7.3 Spawn Execution
-- [ ] Create `ChunkMobSpawner` — Executes one-time mob spawns
-- [ ] Surface spawn positions — Find safe spawn locations on chunk surface
-- [ ] Spawn caps — Prevent excessive spawns per chunk
+- [x] Create `ChunkMobSpawner` — Executes one-time mob spawns
+- [x] Surface spawn positions — Find safe spawn locations on chunk surface
+- [x] Spawn caps — Prevent excessive spawns per chunk
 
 **Suggested commit message:** `feat: Phase 7 — mob spawning system for newly spawned chunks`
 
@@ -858,7 +886,7 @@ None at this time.
 
 ### Phase 12: Polish & UX
 
-**Status:** Not Started
+**Status:** 🔄 In Progress
 
 #### 12.1 Player Feedback
 - [ ] Chunk spawn particles — Visual effect when chunk spawns
@@ -867,7 +895,7 @@ None at this time.
 - [ ] Advancement/toast — Optional notification on first chunk spawn
 
 #### 12.2 Debug & Admin Tools
-- [ ] Debug command — `/brightbronze debug` for info
+- [x] Debug command — `/bbh:tpSource <biome_id> [x y z]` (teleport into the live source dimension for inspection)
 - [ ] Force spawn command — Admin command to spawn specific biome chunk
 - [ ] Tier info command — List biomes in each tier
 
@@ -897,6 +925,34 @@ None at this time.
 
 ---
 
+### Phase 14: Chunk Spawner UX + Tier Rebalance
+
+**Status:** Not Started
+
+#### 14.1 Player Feedback (Messaging)
+- [ ] Spawn announcements — Serverwide success message (player, tier, chunk coords, biome)
+- [ ] Player-friendly failures — Improve failure messages (no “chunk failed” jargon); no serverwide announce on failure
+
+#### 14.2 Consumption Behavior
+- [ ] Break-on-use — On successful spawn, break the spawner so loot drops (instead of vanishing)
+
+#### 14.3 Biome Selection Bias
+- [ ] Coal bias — Always spawn the biome the spawner is placed on
+- [ ] Other tiers bias — If placed-on biome is eligible, use it 40% of the time; otherwise random eligible biome
+
+#### 14.4 Copper Tier
+- [ ] Extend `ChunkSpawnerTier` enum/registry — Add COPPER
+- [ ] Add Copper tier spawner block + item assets
+- [ ] Add Copper tier recipe
+- [ ] Add Copper tier biome tag — common, non-watery Overworld surface biomes
+
+#### 14.5 Biome Pool Reshuffle (anti-ocean frustration)
+- [ ] Move watery Overworld biomes into Iron tier tag
+
+**Suggested commit message:** `feat: Phase 14 — spawner UX improvements and tier rebalance`
+
+---
+
 ### Completion Summary
 
 | Phase | Description | Status |
@@ -906,15 +962,16 @@ None at this time.
 | 3 | Chunk Spawner System | ✅ Completed |
 | 4 | Source Dimensions | ✅ Completed |
 | 5 | Tier & Biome Pools | ✅ Completed |
-| 6A | **Void World Type** | 🔄 In Progress |
+| 6A | **Void World Type** | ✅ Completed |
 | 6 | World Initialization | 🔄 Needs Revision |
-| 7 | Mob Spawning | ⬜ Not Started |
+| 7 | Mob Spawning | 🔄 In Progress |
 | 8 | Configuration | ⬜ Not Started |
 | 9 | Block Post-Processing | ⬜ Not Started |
 | 10 | Multiplayer Support | ⬜ Not Started |
 | 11 | Performance & Disk | ⬜ Not Started |
-| 12 | Polish & UX | ⬜ Not Started |
+| 12 | Polish & UX | 🔄 In Progress |
 | 13 | Testing | ⬜ Not Started |
+| 14 | Chunk Spawner UX + Tier Rebalance | ⬜ Not Started |
 
 > **Note:** Platform-specific code is integrated into each phase as needed, not deferred to a separate phase.
 > 
@@ -934,9 +991,15 @@ None at this time.
 
 **Fix Applied:** Changed `createGeneratorForBiome()` to create a proper `NoiseBasedChunkGenerator`:
 ```java
+ResourceKey<NoiseGeneratorSettings> noiseKey = NoiseGeneratorSettings.OVERWORLD;
+if (biomeHolder.is(BiomeTags.IS_NETHER)) {
+	noiseKey = NoiseGeneratorSettings.NETHER;
+} else if (biomeHolder.is(BiomeTags.IS_END)) {
+	noiseKey = NoiseGeneratorSettings.END;
+}
 Holder<NoiseGeneratorSettings> noiseSettings = server.registryAccess()
-    .lookupOrThrow(Registries.NOISE_SETTINGS)
-    .getOrThrow(NoiseGeneratorSettings.OVERWORLD);
+	.lookupOrThrow(Registries.NOISE_SETTINGS)
+	.getOrThrow(noiseKey);
 FixedBiomeSource biomeSource = new FixedBiomeSource(biomeHolder);
 return new NoiseBasedChunkGenerator(biomeSource, noiseSettings);
 ```

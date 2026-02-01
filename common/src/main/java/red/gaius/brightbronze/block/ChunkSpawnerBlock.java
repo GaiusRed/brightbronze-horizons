@@ -20,6 +20,7 @@ import red.gaius.brightbronze.world.ChunkSpawnerTier;
 import red.gaius.brightbronze.world.PlayableAreaData;
 import red.gaius.brightbronze.world.chunk.ChunkCopyService;
 import red.gaius.brightbronze.world.dimension.SourceDimensionManager;
+import red.gaius.brightbronze.world.mob.ChunkMobSpawner;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -232,9 +233,9 @@ public class ChunkSpawnerBlock extends Block {
                 "Successfully spawned {} biome chunk at ({}, {})",
                 biomeId, targetChunk.x, targetChunk.z
             );
-            
-            // TODO: Phase 7 - handle mob spawning based on tier rules
-            // if (tier.alwaysSpawnsMobs() || isNightTime(level)) { spawnMobs(); }
+
+            // Phase 7: one-time scripted mob spawns when a chunk is revealed.
+            ChunkMobSpawner.onChunkSpawned(level, targetChunk, tier);
         }
 
         return success;

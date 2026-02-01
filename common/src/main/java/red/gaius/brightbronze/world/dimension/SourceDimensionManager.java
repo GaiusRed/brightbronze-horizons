@@ -6,6 +6,7 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.tags.BiomeTags;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.biome.FixedBiomeSource;
@@ -135,10 +136,18 @@ public class SourceDimensionManager {
             return null;
         }
 
-        // Get the overworld noise settings - this is what generates actual terrain!
+        // Pick the correct base terrain generator settings for this biome.
+        // Without this, End/Nether biomes would still generate overworld-like terrain (e.g., grass).
+        ResourceKey<NoiseGeneratorSettings> noiseKey = NoiseGeneratorSettings.OVERWORLD;
+        if (biomeHolder.is(BiomeTags.IS_NETHER)) {
+            noiseKey = NoiseGeneratorSettings.NETHER;
+        } else if (biomeHolder.is(BiomeTags.IS_END)) {
+            noiseKey = NoiseGeneratorSettings.END;
+        }
+
         Holder<NoiseGeneratorSettings> noiseSettings = server.registryAccess()
                 .lookupOrThrow(Registries.NOISE_SETTINGS)
-                .getOrThrow(NoiseGeneratorSettings.OVERWORLD);
+                .getOrThrow(noiseKey);
 
         // Create a fixed biome source that always returns our target biome
         FixedBiomeSource biomeSource = new FixedBiomeSource(biomeHolder);
@@ -149,8 +158,8 @@ public class SourceDimensionManager {
         NoiseBasedChunkGenerator generator = new NoiseBasedChunkGenerator(biomeSource, noiseSettings);
         
         BrightbronzeHorizons.LOGGER.debug(
-            "Created NoiseBasedChunkGenerator for biome {} with overworld settings",
-            biomeId
+            "Created NoiseBasedChunkGenerator for biome {} with noise settings {}",
+            biomeId, noiseKey.location()
         );
         
         return generator;
