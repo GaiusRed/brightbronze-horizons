@@ -8,6 +8,7 @@ import net.neoforged.fml.common.Mod;
 import red.gaius.brightbronze.BrightbronzeHorizons;
 import red.gaius.brightbronze.command.BbhDebugCommands;
 import red.gaius.brightbronze.world.mob.MobSpawnTableReloadListener;
+import red.gaius.brightbronze.world.rules.BiomeRuleReloadListener;
 
 /**
  * NeoForge entrypoint for Brightbronze Horizons.
@@ -23,6 +24,14 @@ public final class BrightbronzeHorizonsNeoForge {
             event.addListener(
                 ResourceLocation.fromNamespaceAndPath(BrightbronzeHorizons.MOD_ID, "mob_spawns"),
                 new MobSpawnTableReloadListener()
+            )
+        );
+
+        // Phase 8/9: data-driven biome rules
+        NeoForge.EVENT_BUS.addListener((AddServerReloadListenersEvent event) ->
+            event.addListener(
+                ResourceLocation.fromNamespaceAndPath(BrightbronzeHorizons.MOD_ID, "biome_rules"),
+                new BiomeRuleReloadListener()
             )
         );
 

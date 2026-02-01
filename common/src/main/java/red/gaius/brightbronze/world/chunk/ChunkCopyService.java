@@ -28,6 +28,7 @@ import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
 import net.minecraft.world.phys.AABB;
 import red.gaius.brightbronze.BrightbronzeHorizons;
+import red.gaius.brightbronze.world.rules.BlockReplacementRule;
 
 import org.jetbrains.annotations.Nullable;
 
@@ -78,7 +79,7 @@ public class ChunkCopyService {
             ServerLevel targetLevel,
             ChunkPos targetChunkPos) {
 
-        return copyChunk(sourceLevel, sourceChunkPos, targetLevel, targetChunkPos, null);
+        return copyChunk(sourceLevel, sourceChunkPos, targetLevel, targetChunkPos, null, null);
         }
 
         /**
@@ -95,6 +96,21 @@ public class ChunkCopyService {
             ServerLevel targetLevel,
             ChunkPos targetChunkPos,
             @Nullable Holder<Biome> forcedTargetBiome) {
+
+        return copyChunk(sourceLevel, sourceChunkPos, targetLevel, targetChunkPos, forcedTargetBiome, null);
+    }
+
+    /**
+     * Copies a chunk from a source dimension to a target dimension, optionally forcing the
+     * target chunk's biome container and applying post-processing rules.
+     */
+    public static boolean copyChunk(
+        ServerLevel sourceLevel,
+        ChunkPos sourceChunkPos,
+        ServerLevel targetLevel,
+        ChunkPos targetChunkPos,
+        @Nullable Holder<Biome> forcedTargetBiome,
+        @Nullable List<BlockReplacementRule> postProcessRules) {
 
         BrightbronzeHorizons.LOGGER.debug("Copying chunk {} from {} to {} at {}",
                 sourceChunkPos, sourceLevel.dimension().location(),
@@ -123,6 +139,11 @@ public class ChunkCopyService {
             // Ensure the target chunk biome matches the spawned biome (critical for Coal local-biome rule).
             if (forcedTargetBiome != null) {
                 applyUniformBiome(targetChunk, forcedTargetBiome);
+            }
+
+            // Phase 9: post-processing (block replacements/stripping) after copy.
+            if (postProcessRules != null && !postProcessRules.isEmpty()) {
+                ChunkPostProcessor.apply(targetLevel, targetChunkPos, postProcessRules);
             }
 
             // Mark target chunk as needing save and trigger updates

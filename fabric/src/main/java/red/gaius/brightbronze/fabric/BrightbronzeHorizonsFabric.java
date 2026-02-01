@@ -10,6 +10,7 @@ import net.minecraft.server.packs.resources.ResourceManager;
 import red.gaius.brightbronze.BrightbronzeHorizons;
 import red.gaius.brightbronze.command.BbhDebugCommands;
 import red.gaius.brightbronze.world.mob.MobSpawnTableManager;
+import red.gaius.brightbronze.world.rules.BiomeRuleManager;
 
 /**
  * Fabric entrypoint for Brightbronze Horizons.
@@ -30,6 +31,19 @@ public final class BrightbronzeHorizonsFabric implements ModInitializer {
             @Override
             public void onResourceManagerReload(ResourceManager manager) {
                 MobSpawnTableManager.reload(manager);
+            }
+        });
+
+        // Phase 8/9: data-driven biome rules (tier mapping, weights, post-processing, per-biome mob spawns)
+        ResourceManagerHelper.get(PackType.SERVER_DATA).registerReloadListener(new SimpleSynchronousResourceReloadListener() {
+            @Override
+            public ResourceLocation getFabricId() {
+                return ResourceLocation.fromNamespaceAndPath(BrightbronzeHorizons.MOD_ID, "biome_rules");
+            }
+
+            @Override
+            public void onResourceManagerReload(ResourceManager manager) {
+                BiomeRuleManager.reload(manager);
             }
         });
 

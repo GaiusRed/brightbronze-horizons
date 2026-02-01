@@ -823,33 +823,33 @@ None at this time.
 
 ### Phase 8: Configuration System
 
-**Status:** Not Started
+**Status:** ✅ COMPLETED
 
 #### 8.1 Runtime Config (Server/World)
-- [ ] Create `BrightbronzeConfig` — Main config class
-- [ ] Starting area toggles — Enable/disable 3×3 start, village requirement
-- [ ] Per-tier enable/disable — Toggle individual tiers
-- [ ] Mob spawn toggle — Enable/disable chunk-spawn mob events
-- [ ] Config sync — Sync config to clients on dedicated servers
+- [x] Create `BrightbronzeConfig` — Main config class
+- [x] Starting area toggles — Enable/disable 3×3 start, village preference
+- [x] Per-tier enable/disable — Toggle individual tiers
+- [x] Mob spawn toggle — Enable/disable chunk-spawn mob events
+- [x] Config sync — Sync config to clients on dedicated servers
 
 #### 8.2 Data-Driven Rules Infrastructure
-- [ ] Create `BiomeRule` record/class — Represents a biome rule entry
-- [ ] Rule file loader — Load JSON files from `data/<namespace>/brightbronze_horizons/biome_rules/`
-- [ ] Priority system — Numeric priority for rule ordering
-- [ ] First-match resolution — Highest priority rule wins
+- [x] Create `BiomeRule` record/class — Represents a biome rule entry
+- [x] Rule file loader — Load JSON files from `data/<namespace>/biome_rules/`
+- [x] Priority system — Numeric priority for rule ordering
+- [x] First-match resolution — Highest priority rule wins for tier assignment
 
 #### 8.3 Biome Rule Schema
-- [ ] Biome selector — Tag reference + optional allow/deny lists
-- [ ] Tier assignment — Which tier this rule assigns
-- [ ] Block replacements — Replace block tags/IDs with specified target blocks
-- [ ] Mob spawn table — Per-rule spawn configuration
-- [ ] Weighting — Rarity weight for biome selection
+- [x] Biome selector — Tag reference + optional allow/deny lists
+- [x] Tier assignment — Which tier this rule assigns
+- [x] Block replacements — Replace block tags/IDs with specified target blocks
+- [x] Mob spawn table — Per-rule spawn configuration (entity + min/max)
+- [x] Weighting — Rarity weight for biome selection
 
 #### 8.4 Default Rule Files
-- [ ] Coal tier default rules — `data/brightbronze_horizons/biome_rules/coal_tier.json`
-- [ ] Iron tier default rules — `data/brightbronze_horizons/biome_rules/iron_tier.json`
-- [ ] Gold tier default rules — `data/brightbronze_horizons/biome_rules/gold_tier.json`
-- [ ] Diamond tier default rules — `data/brightbronze_horizons/biome_rules/diamond_tier.json`
+- [x] Default tier-mapping rules — shipped as multiple small files under `data/brightbronze_horizons/biome_rules/`
+- [x] Back-compat behavior — defaults preserve existing tier-tag mapping (rules are low priority)
+
+> **Note (2026-02-01):** Coal tier remains “local-biome expansion” and does not use a random pool.
 
 **Suggested commit message:** `feat: Phase 8 — configuration system and data-driven biome rules`
 
@@ -857,18 +857,18 @@ None at this time.
 
 ### Phase 9: Block Post-Processing
 
-**Status:** Not Started
+**Status:** ✅ COMPLETED
 
 #### 9.1 Block Replacement System
-- [ ] Create `BlockReplacementRule` — Defines match + replacement target
-- [ ] Tag-based matching — Support block tags (e.g., `#minecraft:ores`)
-- [ ] Block ID matching — Support specific block IDs
-- [ ] Replacement targets — Replace matches with a specific block ID (including `minecraft:air` for removal)
+- [x] Create `BlockReplacementRule` — Defines match + replacement target
+- [x] Tag-based matching — Support block tags (e.g., `#minecraft:ores`)
+- [x] Block ID matching — Support specific block IDs
+- [x] Replacement targets — Replace matches with a specific block ID (including `minecraft:air` for removal)
 
 #### 9.2 Post-Processing Pipeline
-- [ ] Create `ChunkPostProcessor` — Applies replacements to spawned chunks
-- [ ] Rule ordering — Deterministic rule order; first-match wins
-- [ ] Performance optimization — Efficient block iteration
+- [x] Create `ChunkPostProcessor` — Applies replacements to spawned chunks
+- [x] Rule ordering — Deterministic rule order; first-match wins
+- [x] Performance optimization — Efficient block iteration
 
 **Suggested commit message:** `feat: Phase 9 — block replacements for spawned chunks`
 
@@ -972,8 +972,8 @@ None at this time.
 | 6A | **Void World Type** | ✅ Completed |
 | 6 | World Initialization | ✅ Completed |
 | 7 | Mob Spawning | ✅ Completed |
-| 8 | Configuration | ⬜ Not Started |
-| 9 | Block Post-Processing | ⬜ Not Started |
+| 8 | Configuration | 🔄 In Progress |
+| 9 | Block Post-Processing | ✅ Completed |
 | 10 | Multiplayer Support | ⬜ Not Started |
 | 11 | Performance & Disk | ⬜ Not Started |
 | 12 | Polish & UX | 🔄 In Progress |

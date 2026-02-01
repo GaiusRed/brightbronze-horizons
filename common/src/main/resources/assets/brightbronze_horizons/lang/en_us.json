@@ -30,6 +30,7 @@
   "message.brightbronze_horizons.spawner.success": "Spawned %s tier chunk at (%d, %d) - %s",
   "message.brightbronze_horizons.spawner.announce": "%s spawned a %s tier chunk at (%d, %d) - %s",
   "message.brightbronze_horizons.spawner.no_biomes": "This tier has no eligible biomes configured.",
+  "message.brightbronze_horizons.spawner.tier_disabled": "%s tier chunk spawning is disabled on this server.",
   "message.brightbronze_horizons.spawner.copy_failed": "Could not create the new chunk. Try again.",
   "message.brightbronze_horizons.spawner.unknown_biome": "Could not determine a biome for this chunk.",
   "message.brightbronze_horizons.spawner.break_failed": "Chunk was created, but the spawner could not break cleanly.",

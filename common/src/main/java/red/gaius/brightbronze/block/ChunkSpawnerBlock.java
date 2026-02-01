@@ -17,10 +17,13 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
 import red.gaius.brightbronze.BrightbronzeHorizons;
+import red.gaius.brightbronze.config.BrightbronzeConfig;
 import red.gaius.brightbronze.world.BiomePoolManager;
 import red.gaius.brightbronze.world.ChunkSpawnerTier;
 import red.gaius.brightbronze.world.PlayableAreaData;
 import red.gaius.brightbronze.world.chunk.ChunkCopyService;
+import red.gaius.brightbronze.world.rules.BiomeRuleManager;
+import red.gaius.brightbronze.world.rules.BiomeRuleManager.WeightedBiomePool;
 import red.gaius.brightbronze.world.dimension.SourceDimensionManager;
 import red.gaius.brightbronze.world.mob.ChunkSpawnMobEvent;
 
@@ -68,6 +71,14 @@ public class ChunkSpawnerBlock extends Block {
     protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player, BlockHitResult hitResult) {
         if (level.isClientSide()) {
             return InteractionResult.SUCCESS;
+        }
+
+        if (!BrightbronzeConfig.isTierEnabled(tier)) {
+            player.displayClientMessage(
+                Component.translatable("message.brightbronze_horizons.spawner.tier_disabled", tier.getName()),
+                true
+            );
+            return InteractionResult.FAIL;
         }
 
         ServerLevel serverLevel = (ServerLevel) level;
@@ -228,7 +239,8 @@ public class ChunkSpawnerBlock extends Block {
             sourceChunkPos,
             level,
             targetChunk,
-            biomeHolder
+            biomeHolder,
+            BiomeRuleManager.getReplacementRules(level.registryAccess(), biomeId)
         );
 
         if (success) {
@@ -241,7 +253,9 @@ public class ChunkSpawnerBlock extends Block {
             );
 
             // Phase 7: one-time scripted mob spawns when a chunk is revealed.
-            ChunkSpawnMobEvent.fire(level, targetChunk, tier);
+            if (BrightbronzeConfig.get().enableChunkSpawnMobs) {
+                ChunkSpawnMobEvent.fire(level, targetChunk, tier);
+            }
             return SpawnAttemptResult.success(biomeId);
         }
 
@@ -263,7 +277,7 @@ public class ChunkSpawnerBlock extends Block {
             return SpawnAttemptResult.success(placedBiomeId);
         }
 
-        List<Holder<Biome>> pool = BiomePoolManager.getBiomesForTier(level.registryAccess(), tier);
+        WeightedBiomePool pool = BiomeRuleManager.getWeightedPool(level.registryAccess(), tier);
         if (pool.isEmpty()) {
             BrightbronzeHorizons.LOGGER.warn("No biomes available for tier {}", tier.getName());
             return SpawnAttemptResult.failure(Component.translatable("message.brightbronze_horizons.spawner.no_biomes"));
@@ -277,8 +291,13 @@ public class ChunkSpawnerBlock extends Block {
             }
         }
 
-        int index = playableData.nextDeterministicInt(level.getServer(), pool.size());
-        Holder<Biome> selected = pool.get(index);
+        int roll = playableData.nextDeterministicInt(level.getServer(), Math.max(1, pool.totalWeight()));
+        Optional<Holder.Reference<Biome>> selectedOpt = pool.selectByWeight(roll);
+        if (selectedOpt.isEmpty()) {
+            return SpawnAttemptResult.failure(Component.translatable("message.brightbronze_horizons.spawner.no_biomes"));
+        }
+
+        Holder<Biome> selected = selectedOpt.get();
         ResourceLocation biomeId = BiomePoolManager.getBiomeId(selected);
         if (biomeId == null) {
             return SpawnAttemptResult.failure(Component.translatable("message.brightbronze_horizons.spawner.unknown_biome"));
@@ -286,9 +305,9 @@ public class ChunkSpawnerBlock extends Block {
         return SpawnAttemptResult.success(biomeId);
     }
 
-    private static boolean poolContainsBiomeId(List<Holder<Biome>> pool, ResourceLocation biomeId) {
-        for (Holder<Biome> holder : pool) {
-            ResourceLocation id = BiomePoolManager.getBiomeId(holder);
+    private static boolean poolContainsBiomeId(WeightedBiomePool pool, ResourceLocation biomeId) {
+        for (BiomeRuleManager.WeightedBiomeEntry entry : pool.entries()) {
+            ResourceLocation id = BiomePoolManager.getBiomeId(entry.biome());
             if (biomeId.equals(id)) {
                 return true;
             }

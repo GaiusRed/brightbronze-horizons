@@ -20,8 +20,10 @@ import net.minecraft.world.level.levelgen.structure.Structure;
 import net.minecraft.world.level.storage.LevelData;
 import net.minecraft.world.level.storage.ServerLevelData;
 import red.gaius.brightbronze.BrightbronzeHorizons;
+import red.gaius.brightbronze.config.BrightbronzeConfig;
 import red.gaius.brightbronze.world.chunk.ChunkCopyService;
 import red.gaius.brightbronze.world.dimension.SourceDimensionManager;
+import red.gaius.brightbronze.world.rules.BiomeRuleManager;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -127,6 +129,8 @@ public class StartingAreaManager {
 
         // Copy the 3×3 chunk area
         List<ChunkPos> startingChunks = getStartingChunks(centerChunk);
+
+        var replacementRules = BiomeRuleManager.getReplacementRules(overworld.registryAccess(), startingBiome);
         
         boolean allSuccess = true;
         int totalBlocksCopied = 0;
@@ -137,7 +141,8 @@ public class StartingAreaManager {
                 chunkPos,  // Source coords = target coords (per PRD)
                 overworld,
                 chunkPos,
-                startingBiomeHolder
+                startingBiomeHolder,
+                replacementRules
             );
             
             if (success) {
@@ -195,6 +200,10 @@ public class StartingAreaManager {
      * </ol>
      */
     private static ChunkPos chooseStartingCenterChunk(ServerLevel overworld, ServerLevel sourceLevel, ChunkPos requestedCenterChunk) {
+        if (!BrightbronzeConfig.get().preferVillageStart) {
+            return requestedCenterChunk;
+        }
+
         Optional<BlockPos> villagePos = findNearestVillage(sourceLevel, requestedCenterChunk);
 
         if (villagePos.isPresent()) {
@@ -405,6 +414,12 @@ public class StartingAreaManager {
     public static boolean checkAndInitialize(MinecraftServer server) {
         PlayableAreaData playableData = PlayableAreaData.get(server);
         
+        if (!BrightbronzeConfig.get().enableStartingArea) {
+            // Pack authors may intentionally disable the default 3x3 start.
+            // Note: The overworld is void in the Brightbronze preset.
+            return true;
+        }
+
         if (!playableData.isInitialized()) {
             return initializeStartingArea(server);
         }

@@ -12,6 +12,8 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.Heightmap;
 import red.gaius.brightbronze.BrightbronzeHorizons;
 import red.gaius.brightbronze.world.ChunkSpawnerTier;
+import red.gaius.brightbronze.world.BiomePoolManager;
+import red.gaius.brightbronze.world.rules.BiomeRuleManager;
 
 import java.util.List;
 
@@ -33,9 +35,16 @@ public final class ChunkMobSpawner {
             return;
         }
 
-        List<MobSpawnRule> rules = MobSpawnTableManager.getRulesForTier(tier);
+        // Phase 8: allow per-biome scripted mob spawns via biome rules.
+        var biomeId = BiomePoolManager.getBiomeId(level.getBiome(chunkPos.getMiddleBlockPosition(64)));
+        List<MobSpawnRule> rules = biomeId == null ? List.of() : BiomeRuleManager.getMobSpawnRules(level.registryAccess(), biomeId);
+
+        // Back-compat: if no per-biome rules are defined, fall back to tier tables/defaults.
         if (rules.isEmpty()) {
-            rules = getDefaultRulesForTier(tier);
+            rules = MobSpawnTableManager.getRulesForTier(tier);
+            if (rules.isEmpty()) {
+                rules = getDefaultRulesForTier(tier);
+            }
         }
         if (rules.isEmpty()) {
             return;

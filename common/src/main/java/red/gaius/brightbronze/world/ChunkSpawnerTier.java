@@ -90,8 +90,18 @@ public enum ChunkSpawnerTier {
      * @return The tier, or null if not found
      */
     public static ChunkSpawnerTier byName(String name) {
+        if (name == null) {
+            return null;
+        }
+
+        String normalized = name.trim();
+        if (normalized.isEmpty()) {
+            return null;
+        }
+
         for (ChunkSpawnerTier tier : values()) {
-            if (tier.name.equals(name)) {
+            // Accept both the datapack-friendly lowercase id (tier.getName()) and the enum constant name (tier.name()).
+            if (tier.name.equalsIgnoreCase(normalized) || tier.name().equalsIgnoreCase(normalized)) {
                 return tier;
             }
         }
