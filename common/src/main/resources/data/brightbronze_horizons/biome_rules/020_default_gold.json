@@ -3,6 +3,11 @@
   "biome_tag": "brightbronze_horizons:tier/gold",
   "tier": "gold",
   "weight": 1,
-  "replacements": [],
+  "replacements": [
+    {
+      "match": "minecraft:bedrock",
+      "replace_with": "minecraft:air"
+    }
+  ],
   "mob_spawns": []
 }

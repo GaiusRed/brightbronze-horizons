@@ -1,6 +1,6 @@
 {
   "parent": "minecraft:block/cube_all",
   "textures": {
-    "all": "brightbronze_horizons:block/coal_chunk_spawner"
+    "all": "brightbronze_horizons:block/copper_chunk_spawner"
   }
 }
