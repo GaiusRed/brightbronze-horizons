@@ -15,6 +15,7 @@ import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.levelgen.Heightmap;
+import net.minecraft.advancements.AdvancementHolder;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
@@ -277,13 +278,13 @@ public final class ChunkExpansionManager {
         int z = chunkPos.getMiddleBlockZ();
         int y = level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, z);
         double fx = x + 0.5;
-        double fy = Math.max(level.getMinBuildHeight() + 1, y + 1);
+        double fy = Math.max(level.getMinY() + 1, y + 1);
         double fz = z + 0.5;
 
         level.sendParticles(ParticleTypes.PORTAL, fx, fy, fz, 120, 4.0, 2.5, 4.0, 0.15);
         level.sendParticles(ParticleTypes.CLOUD, fx, fy, fz, 40, 2.5, 0.8, 2.5, 0.01);
 
-        level.playSound(null, fx, fy, fz, SoundEvents.BLOCK_BEACON_ACTIVATE, SoundSource.BLOCKS, 0.9F, 1.2F);
+        level.playSound(null, fx, fy, fz, SoundEvents.BEACON_ACTIVATE, SoundSource.BLOCKS, 0.9F, 1.2F);
     }
 
     private static void awardFirstChunkAdvancement(MinecraftServer server, @Nullable UUID playerId) {
@@ -296,7 +297,7 @@ public final class ChunkExpansionManager {
             return;
         }
 
-        var advancement = server.getAdvancements().getAdvancement(FIRST_CHUNK_ADVANCEMENT);
+        AdvancementHolder advancement = server.getAdvancements().get(FIRST_CHUNK_ADVANCEMENT);
         if (advancement == null) {
             return;
         }
@@ -306,7 +307,7 @@ public final class ChunkExpansionManager {
             return;
         }
 
-        for (String criterion : advancement.getCriteria().keySet()) {
+        for (String criterion : advancement.value().criteria().keySet()) {
             player.getAdvancements().award(advancement, criterion);
         }
     }

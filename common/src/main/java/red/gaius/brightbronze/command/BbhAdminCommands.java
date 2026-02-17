@@ -1,6 +1,7 @@
 package red.gaius.brightbronze.command;
 
 import com.mojang.brigadier.CommandDispatcher;
+import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.suggestion.Suggestions;
 import com.mojang.brigadier.suggestion.SuggestionsBuilder;
@@ -76,7 +77,7 @@ public final class BbhAdminCommands {
         );
     }
 
-    private static CompletableFuture<Suggestions> suggestTiers(CommandSourceStack source, SuggestionsBuilder builder) {
+    private static CompletableFuture<Suggestions> suggestTiers(CommandContext<CommandSourceStack> context, SuggestionsBuilder builder) {
         List<String> names = new ArrayList<>();
         for (ChunkSpawnerTier tier : ChunkSpawnerTier.values()) {
             names.add(tier.getName());
@@ -135,9 +136,8 @@ public final class BbhAdminCommands {
             return 0;
         }
 
-        source.sendSuccess(() -> Component.literal(
-            "Enqueued forced spawn for chunk (" + targetChunk.x + ", " + targetChunk.z + ") biome " + biomeId + " (tier " + tier.getName() + ")"
-        ), false);
+        String message = "Enqueued forced spawn for chunk (" + targetChunk.x + ", " + targetChunk.z + ") biome " + biomeId + " (tier " + tier.getName() + ")";
+        source.sendSuccess(() -> Component.literal(message), false);
 
         return 1;
     }

@@ -963,10 +963,10 @@ None at this time.
 **Status:** Not Started
 
 #### 13.1 Manual Testing
-- [ ] Test new world creation with 3×3 start
-- [ ] Test each tier's chunk spawner
-- [ ] Test edge placement detection
-- [ ] Test mob spawning rules (day/night)
+- [x] Test new world creation with 3×3 start
+- [x] Test each tier's chunk spawner
+- [x] Test edge placement detection
+- [x] Test mob spawning rules (day/night)
 - [ ] Test dedicated server operation
 - [ ] Test config changes take effect
 
@@ -983,10 +983,16 @@ None at this time.
 7. Launch NeoForge client: `./gradlew :neoforge:runClient` and repeat steps 2–4.
 
 #### 13.2 Edge Cases
-- [ ] Test Emerald tier with no biomes (should fail gracefully)
+- [x] Test Emerald tier with no biomes (should fail gracefully)
 - [ ] Test expansion at world border
 - [ ] Test rapid chunk spawning by multiple players
 - [ ] Test world load/save with many source dimensions
+
+**Phase 13 notes (2026-02-17):**
+- Copper bias verified qualitatively; no numeric sampling yet.
+- World-border expansion not yet tested.
+- Multiplayer/rapid spawn tests not yet run.
+- Config toggles not yet validated.
 
 **Suggested commit message:** `test: Phase 13 — manual testing and edge case validation`
 

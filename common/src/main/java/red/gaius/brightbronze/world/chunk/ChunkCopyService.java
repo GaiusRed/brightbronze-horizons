@@ -6,7 +6,8 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.DoubleTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.server.level.ChunkHolder;
+import net.minecraft.server.level.ChunkResult;
+import net.minecraft.server.level.GenerationChunkHolder;
 import net.minecraft.util.ProblemReporter;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntitySpawnReason;
@@ -23,7 +24,7 @@ import net.minecraft.world.level.block.LiquidBlock;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.ChunkAccess;
-import net.minecraft.world.level.chunk.ChunkStatus;
+import net.minecraft.world.level.chunk.status.ChunkStatus;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.storage.TagValueInput;
 import net.minecraft.world.level.storage.TagValueOutput;
@@ -33,7 +34,6 @@ import net.minecraft.world.phys.AABB;
 import red.gaius.brightbronze.BrightbronzeHorizons;
 import red.gaius.brightbronze.world.rules.BlockReplacementRule;
 
-import com.mojang.datafixers.util.Either;
 
 import org.jetbrains.annotations.Nullable;
 
@@ -109,9 +109,9 @@ public class ChunkCopyService {
         private int nextY;
 
         @Nullable
-        private CompletableFuture<Either<ChunkAccess, ChunkHolder.ChunkLoadingFailure>> sourceChunkFuture;
+        private CompletableFuture<ChunkResult<ChunkAccess>> sourceChunkFuture;
         @Nullable
-        private CompletableFuture<Either<ChunkAccess, ChunkHolder.ChunkLoadingFailure>> targetChunkFuture;
+        private CompletableFuture<ChunkResult<ChunkAccess>> targetChunkFuture;
         private boolean chunksReady;
 
         private ChunkCopyJob(
@@ -178,12 +178,12 @@ public class ChunkCopyService {
                         return new Result(false, false);
                     }
 
-                    Either<ChunkAccess, ChunkHolder.ChunkLoadingFailure> sourceReady =
-                        sourceChunkFuture.getNow(Either.right(ChunkHolder.ChunkLoadingFailure.UNLOADED));
-                    Either<ChunkAccess, ChunkHolder.ChunkLoadingFailure> targetReady =
-                        targetChunkFuture.getNow(Either.right(ChunkHolder.ChunkLoadingFailure.UNLOADED));
+                    ChunkResult<ChunkAccess> sourceReady =
+                        sourceChunkFuture.getNow(GenerationChunkHolder.UNLOADED_CHUNK);
+                    ChunkResult<ChunkAccess> targetReady =
+                        targetChunkFuture.getNow(GenerationChunkHolder.UNLOADED_CHUNK);
 
-                    if (sourceReady.left().isEmpty() || targetReady.left().isEmpty()) {
+                    if (sourceReady == null || targetReady == null || !sourceReady.isSuccess() || !targetReady.isSuccess()) {
                         BrightbronzeHorizons.LOGGER.warn("Chunk copy aborted: source/target chunk failed to load");
                         markFinished(false);
                         return new Result(true, false);
