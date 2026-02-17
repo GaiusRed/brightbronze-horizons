@@ -117,6 +117,15 @@ public final class BrightbronzeConfig {
         /** Phase 11: max number of source dimensions to create (0 = unlimited). */
         public int maxSourceDimensions = 0;
 
+        /** If true, spawning a chunk completes any structures that extend beyond that chunk. */
+        public boolean enableStructureCompletion = true;
+
+        /** Maximum number of structures that can be completed from a single trigger (cascade limit). */
+        public int maxStructureCompletionStructures = 16;
+
+        /** Hard cap on total chunks spawned for structure completion from a single trigger. */
+        public int maxStructureCompletionChunks = 256;
+
         /** Per-tier enable/disable. Keys are tier enum names (e.g. "COPPER"). */
         public Map<String, Boolean> tiersEnabled = new HashMap<>();
 
@@ -151,6 +160,14 @@ public final class BrightbronzeConfig {
 
             if (maxSourceDimensions < 0) {
                 maxSourceDimensions = 0;
+            }
+
+            if (maxStructureCompletionStructures <= 0) {
+                maxStructureCompletionStructures = 16;
+            }
+
+            if (maxStructureCompletionChunks <= 0) {
+                maxStructureCompletionChunks = 256;
             }
         }
 
