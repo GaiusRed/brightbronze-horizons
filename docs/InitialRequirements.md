@@ -480,7 +480,7 @@ None at this time.
 >
 > **Git Workflow**: After completing each phase, the implementer will provide a suggested commit message. The user will then **manually run `git commit`** before proceeding to the next phase. Do not auto-commit.
 >
-> **🎮 RUNNABLE REQUIREMENT**: Every completed phase **MUST** result in a mod that launches successfully on **both Fabric and NeoForge**. If a phase adds items/blocks, placeholder textures and models must be included. Phases are not considered complete until `.\gradlew :fabric:runClient` and `.\gradlew :neoforge:runClient` both launch without crashes.
+> **🎮 RUNNABLE REQUIREMENT**: Every completed phase **MUST** result in a mod that launches successfully on **both Fabric and NeoForge**. If a phase adds items/blocks, placeholder textures and models must be included. Phases are not considered complete until `\.gradlew :fabric:runClient` and `\.gradlew :neoforge:runClient` both launch without crashes.
 
 ---
 
@@ -536,8 +536,8 @@ None at this time.
 - [x] Block models — JSON models + blockstate for all registered blocks
 - [x] Placeholder textures — Simple colored textures for all items/blocks
 - [x] Language file — Basic `en_us.json` with item/block names
-- [x] **Verify Fabric launch** — `.\gradlew :fabric:runClient` starts without crash
-- [x] **Verify NeoForge launch** — `.\gradlew :neoforge:runClient` starts without crash
+- [x] **Verify Fabric launch** — `\.gradlew :fabric:runClient` starts without crash
+- [x] **Verify NeoForge launch** — `\.gradlew :neoforge:runClient` starts without crash
 
 > **Implementation Note (MC 1.21.10):** Blocks and Items require `Properties.setId(ResourceKey)` to be called BEFORE construction. This is a breaking API change from 1.21. Without this, NeoForge throws "Block id not set" / "Item id not set" during registration.
 

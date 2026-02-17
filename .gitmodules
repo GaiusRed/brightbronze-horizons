@@ -1,6 +1,0 @@
-[submodule "tmp/chunkbychunk"]
-	path = tmp/chunkbychunk
-	url = https://github.com/GaiusRed/chunkbychunk.git
-[submodule "tmp/brightbronze-logistics"]
-	path = tmp/brightbronze-logistics
-	url = https://github.com/codebound-worlds/brightbronze-logistics.git
