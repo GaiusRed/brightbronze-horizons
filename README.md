@@ -1,8 +1,8 @@
 # Brightbronze Horizons
 Stabilize the edge of reality. Stitch a world into the void.
 
-```
-Field Log: Arrival
+
+## Field Log: Arrival
 
 I remember the impact—then nothing. No sky I recognize, no horizon that behaves, no familiar pull of distance. Just a village, warm lamps, wheat in the breeze… and an emptiness beyond it that swallows sound. The locals don’t seem afraid. They build where the ground is solid and stop where it isn’t.
 
@@ -14,13 +14,12 @@ and below me is an infinite, patient void.
 
 But I’m not helpless.
 
-I know an alloy — an old explorer’s trick for anchoring unstable places. A bright metal that hums when reality is thin Brightbronze. If I can make it here, I can do what I was trained to do: Stabilize the frontier. Expand the map. Turn “nothing” into “somewhere.”
-```
+I know an alloy — an old explorer’s trick for anchoring unstable places. A bright metal that hums when reality is thin: Brightbronze. If I can make it here, I can do what I was trained to do: Stabilize the frontier. Expand the map. Turn “nothing” into “somewhere.”
+
 
 ## Gameplay Loop
 
-**Brightbronze Horizons** drops you into a fragile realm:
-you always begin in a **3×3 chunk plains village**, surrounded by the **void**. The village is safe. The edge is not.
+**Brightbronze Horizons** drops you into a fragile realm: you always begin in a **3×3 chunk plains village**, surrounded by the **void**. The village is safe. The edge is not.
 
 Your goal is to **craft Brightbronze** and use it to create **Horizon Anchors**—special blocks that **stabilize the realm** and **spawn new chunks** when placed on the **edge** of your current world.
 
