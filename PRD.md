@@ -484,6 +484,15 @@ None at this time.
 
 ---
 
+### Audit Notes (2026-02-17)
+
+- **Phase 8 status mismatch:** The Phase 8 section is marked ✅ completed, but the Completion Summary still shows 🔄. The code and data pack infrastructure appear present; the summary should reflect ✅ (see Phase 8 section below).
+- **Phase 12 spawn announcements:** Announcements are already implemented by the chunk expansion manager (Phase 3), so the Phase 12 checklist item should be marked ✅ to avoid double-counting.
+- **Async chunk generation:** Not observed; chunk copying is tick-bounded but still runs on the server thread. Keep Phase 11 item unchecked.
+- **Manual verification required:** See Phase 13 notes for steps the user should run locally.
+
+---
+
 ### Recommended Implementation Order
 
 1. Phase 1 → Core infrastructure (must be first)
@@ -937,7 +946,7 @@ None at this time.
 - [ ] Chunk spawn particles — Visual effect when chunk spawns
 - [ ] Chunk spawn sound — Audio feedback
 - [ ] Failure messages — Clear chat/actionbar messages on failure
-- [ ] Spawn announcements — Serverwide success message (player, tier, chunk coords, biome)
+- [x] Spawn announcements — Serverwide success message (player, tier, chunk coords, biome)
 - [ ] Advancement/toast — Optional notification on first chunk spawn
 
 #### 12.2 Debug & Admin Tools
@@ -961,6 +970,18 @@ None at this time.
 - [ ] Test dedicated server operation
 - [ ] Test config changes take effect
 
+**Manual verification steps (run locally):**
+1. Launch Fabric client: `./gradlew :fabric:runClient` and create a new world. Confirm the **Brightbronze Horizons** preset is selected by default.
+2. Verify the starting 3×3 area is fully generated (no void holes), with Plains biome and a village attempt visible.
+3. Craft each chunk spawner tier and place at a chunk edge. Confirm:
+	- Non-edge placement shows the warning message.
+	- Edge placement spawns exactly one adjacent chunk.
+	- Serverwide announcement is sent on success.
+4. For Coal tier, place in a biome and verify the spawned chunk matches that biome.
+5. For other tiers, confirm the 40% “same biome” bias by repeated spawns from an eligible biome.
+6. Toggle mob spawning and tier enablement in config, then restart and confirm behavior changes.
+7. Launch NeoForge client: `./gradlew :neoforge:runClient` and repeat steps 2–4.
+
 #### 13.2 Edge Cases
 - [ ] Test Emerald tier with no biomes (should fail gracefully)
 - [ ] Test expansion at world border
@@ -983,7 +1004,7 @@ None at this time.
 | 6A | **Void World Type** | ✅ Completed |
 | 6 | World Initialization | ✅ Completed |
 | 7 | Mob Spawning | ✅ Completed |
-| 8 | Configuration | 🔄 In Progress |
+| 8 | Configuration | ✅ Completed |
 | 9 | Block Post-Processing | ✅ Completed |
 | 10 | Multiplayer Support | 🔄 In Progress |
 | 11 | Performance & Disk | 🔄 In Progress |
