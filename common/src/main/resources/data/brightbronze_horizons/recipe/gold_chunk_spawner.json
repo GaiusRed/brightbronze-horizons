@@ -1,14 +1,14 @@
 {
   "type": "minecraft:crafting_shaped",
   "pattern": [
-    "AAA",
     "ABA",
-    "ACA"
+    "BCB",
+    "ABA"
   ],
   "key": {
     "A": "brightbronze_horizons:brightbronze_ingot",
-    "B": "minecraft:gold_block",
-    "C": "minecraft:campfire"
+    "B": "brightbronze_horizons:brightbronze_nugget",
+    "C": "minecraft:gold_block"
   },
   "result": {
     "id": "brightbronze_horizons:gold_chunk_spawner",
