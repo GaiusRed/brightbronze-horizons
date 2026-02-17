@@ -9,9 +9,13 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.biome.Biome;
+import net.minecraft.world.level.levelgen.Heightmap;
+import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import org.jetbrains.annotations.Nullable;
@@ -45,6 +49,9 @@ public final class ChunkExpansionManager {
     private static final Deque<ExpansionRequest> QUEUE = new ArrayDeque<>();
     private static final Map<Long, ExpansionRequest> IN_FLIGHT_BY_CHUNK = new HashMap<>();
 
+    private static final ResourceLocation FIRST_CHUNK_ADVANCEMENT =
+        ResourceLocation.fromNamespaceAndPath(BrightbronzeHorizons.MOD_ID, "first_chunk_spawn");
+
     @Nullable
     private static ActiveJob activeJob;
 
@@ -71,6 +78,19 @@ public final class ChunkExpansionManager {
                                        @Nullable UUID playerId,
                                        @Nullable String playerName) {
 
+        return enqueue(overworld, spawnerPos, tier, targetChunk, biomeId, playerId, playerName, true, true);
+    }
+
+    public static EnqueueResult enqueue(ServerLevel overworld,
+                                       @Nullable BlockPos spawnerPos,
+                                       ChunkSpawnerTier tier,
+                                       ChunkPos targetChunk,
+                                       ResourceLocation biomeId,
+                                       @Nullable UUID playerId,
+                                       @Nullable String playerName,
+                                       boolean enforceAdjacency,
+                                       boolean breakSpawnerOnSuccess) {
+
         MinecraftServer server = overworld.getServer();
 
         // Always enqueue from the server thread. The caller should already be on-server,
@@ -81,10 +101,10 @@ public final class ChunkExpansionManager {
         }
 
         PlayableAreaData playableData = PlayableAreaData.get(server);
-        if (!playableData.canExpandInto(targetChunk)) {
-            if (playableData.isChunkPlayable(targetChunk)) {
-                return EnqueueResult.createFailure(Component.translatable("message.brightbronze_horizons.spawner.already_spawned"));
-            }
+        if (playableData.isChunkPlayable(targetChunk)) {
+            return EnqueueResult.createFailure(Component.translatable("message.brightbronze_horizons.spawner.already_spawned"));
+        }
+        if (enforceAdjacency && !playableData.canExpandInto(targetChunk)) {
             return EnqueueResult.createFailure(Component.translatable("message.brightbronze_horizons.spawner.not_adjacent"));
         }
 
@@ -95,7 +115,8 @@ public final class ChunkExpansionManager {
 
         ExpansionRequest request = new ExpansionRequest(
             overworld.dimension().location(),
-            spawnerPos.immutable(),
+            spawnerPos == null ? null : spawnerPos.immutable(),
+            breakSpawnerOnSuccess,
             tier,
             targetChunk,
             biomeId,
@@ -191,10 +212,18 @@ public final class ChunkExpansionManager {
         }
 
         // Break the spawner only on success (PRD).
-        BlockState state = overworld.getBlockState(request.spawnerPos);
-        if (!state.isAir()) {
-            overworld.destroyBlock(request.spawnerPos, true);
+        if (request.breakSpawnerOnSuccess && request.spawnerPos != null) {
+            BlockState state = overworld.getBlockState(request.spawnerPos);
+            if (!state.isAir()) {
+                overworld.destroyBlock(request.spawnerPos, true);
+            }
         }
+
+        // Phase 12: visual/audio feedback on successful spawn.
+        spawnSuccessEffects(overworld, request.targetChunk);
+
+        // Phase 12: optional toast on first chunk spawn for the player.
+        awardFirstChunkAdvancement(server, request.playerId);
 
         // PRD: announce success serverwide.
         String who = request.playerName != null ? request.playerName : "Someone";
@@ -243,8 +272,48 @@ public final class ChunkExpansionManager {
         return (((long) pos.x) << 32) ^ (pos.z & 0xFFFFFFFFL);
     }
 
+    private static void spawnSuccessEffects(ServerLevel level, ChunkPos chunkPos) {
+        int x = chunkPos.getMiddleBlockX();
+        int z = chunkPos.getMiddleBlockZ();
+        int y = level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, z);
+        double fx = x + 0.5;
+        double fy = Math.max(level.getMinBuildHeight() + 1, y + 1);
+        double fz = z + 0.5;
+
+        level.sendParticles(ParticleTypes.PORTAL, fx, fy, fz, 120, 4.0, 2.5, 4.0, 0.15);
+        level.sendParticles(ParticleTypes.CLOUD, fx, fy, fz, 40, 2.5, 0.8, 2.5, 0.01);
+
+        level.playSound(null, fx, fy, fz, SoundEvents.BLOCK_BEACON_ACTIVATE, SoundSource.BLOCKS, 0.9F, 1.2F);
+    }
+
+    private static void awardFirstChunkAdvancement(MinecraftServer server, @Nullable UUID playerId) {
+        if (playerId == null) {
+            return;
+        }
+
+        ServerPlayer player = server.getPlayerList().getPlayer(playerId);
+        if (player == null) {
+            return;
+        }
+
+        var advancement = server.getAdvancements().getAdvancement(FIRST_CHUNK_ADVANCEMENT);
+        if (advancement == null) {
+            return;
+        }
+
+        var progress = player.getAdvancements().getOrStartProgress(advancement);
+        if (progress.isDone()) {
+            return;
+        }
+
+        for (String criterion : advancement.getCriteria().keySet()) {
+            player.getAdvancements().award(advancement, criterion);
+        }
+    }
+
     private record ExpansionRequest(ResourceLocation overworldId,
-                                    BlockPos spawnerPos,
+                                    @Nullable BlockPos spawnerPos,
+                                    boolean breakSpawnerOnSuccess,
                                     ChunkSpawnerTier tier,
                                     ChunkPos targetChunk,
                                     ResourceLocation biomeId,

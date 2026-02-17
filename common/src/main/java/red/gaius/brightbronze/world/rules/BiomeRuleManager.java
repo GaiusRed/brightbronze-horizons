@@ -20,6 +20,7 @@ import red.gaius.brightbronze.BrightbronzeHorizons;
 import red.gaius.brightbronze.world.BiomePoolManager;
 import red.gaius.brightbronze.world.ChunkSpawnerTier;
 import red.gaius.brightbronze.world.mob.MobSpawnRule;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -91,6 +92,13 @@ public final class BiomeRuleManager {
             return WeightedBiomePool.empty();
         }
         return pool;
+    }
+
+    @Nullable
+    public static ChunkSpawnerTier getResolvedTier(RegistryAccess registryAccess, ResourceLocation biomeId) {
+        ensureResolved(registryAccess);
+        ResolvedBiome resolved = resolvedCache.byBiomeId.get(biomeId);
+        return resolved == null ? null : resolved.tier;
     }
 
     public static List<BlockReplacementRule> getReplacementRules(RegistryAccess registryAccess, ResourceLocation biomeId) {
@@ -209,10 +217,11 @@ public final class BiomeRuleManager {
             }
         }
 
-        // Build tier pools from resolved biome mapping.
-        for (var entry : byBiome.entrySet()) {
-            ResourceLocation biomeId = entry.getKey();
-            ResolvedBiome resolved = entry.getValue();
+        // Build tier pools from resolved biome mapping (stable ordering for determinism).
+        List<ResourceLocation> orderedBiomeIds = new ArrayList<>(byBiome.keySet());
+        orderedBiomeIds.sort(Comparator.comparing(ResourceLocation::toString));
+        for (ResourceLocation biomeId : orderedBiomeIds) {
+            ResolvedBiome resolved = byBiome.get(biomeId);
 
             if (resolved.tier == ChunkSpawnerTier.COAL) {
                 continue; // Coal is local-biome; no pool selection.

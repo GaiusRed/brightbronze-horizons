@@ -6,6 +6,7 @@ import net.neoforged.neoforge.event.AddServerReloadListenersEvent;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
 import net.neoforged.fml.common.Mod;
 import red.gaius.brightbronze.BrightbronzeHorizons;
+import red.gaius.brightbronze.command.BbhAdminCommands;
 import red.gaius.brightbronze.command.BbhDebugCommands;
 import red.gaius.brightbronze.command.BbhDiskCommands;
 import red.gaius.brightbronze.world.mob.MobSpawnTableReloadListener;
@@ -44,6 +45,11 @@ public final class BrightbronzeHorizonsNeoForge {
         // Phase 11: disk management and usage reporting.
         NeoForge.EVENT_BUS.addListener((RegisterCommandsEvent event) ->
             BbhDiskCommands.register(event.getDispatcher())
+        );
+
+        // Phase 12: admin commands.
+        NeoForge.EVENT_BUS.addListener((RegisterCommandsEvent event) ->
+            BbhAdminCommands.register(event.getDispatcher())
         );
     }
 }

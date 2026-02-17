@@ -885,7 +885,7 @@ None at this time.
 
 ### Phase 10: Multiplayer & Server Support
 
-**Status:** 🔄 In Progress
+**Status:** ✅ COMPLETED
 
 #### 10.1 Permissions & Access
 - [x] No restrictions — Anyone can spawn chunks (per PRD)
@@ -899,7 +899,7 @@ None at this time.
 #### 10.3 Persistence
 - [x] Deterministic RNG — Persistent deterministic RNG for reproducible biome selection (SavedData-backed)
 - [x] State persistence — Save/load RNG state, spawned chunk tracking
-- [ ] Restart consistency — Same seed + config = same results
+- [x] Restart consistency — Same seed + config = same results
 
 > **Implementation Note (2026-02-01):** Chunk spawner biome selection is now deterministic across restarts.
 > Corner-direction choice (when placed exactly on a chunk corner) is also deterministic (seed + position).
@@ -918,10 +918,10 @@ None at this time.
 
 ### Phase 11: Performance & Disk Management
 
-**Status:** 🔄 In Progress
+**Status:** ✅ COMPLETED
 
 #### 11.1 Performance Controls
-- [ ] Async chunk generation — Avoid main-thread stalls
+- [x] Async chunk generation — Avoid main-thread stalls
 - [x] Bounded operations — Limit work per tick
 - [x] Source dimension caps — Prevent runaway dimension creation
 
@@ -940,19 +940,19 @@ None at this time.
 
 ### Phase 12: Polish & UX
 
-**Status:** 🔄 In Progress
+**Status:** ✅ COMPLETED
 
 #### 12.1 Player Feedback
-- [ ] Chunk spawn particles — Visual effect when chunk spawns
-- [ ] Chunk spawn sound — Audio feedback
-- [ ] Failure messages — Clear chat/actionbar messages on failure
+- [x] Chunk spawn particles — Visual effect when chunk spawns
+- [x] Chunk spawn sound — Audio feedback
+- [x] Failure messages — Clear chat/actionbar messages on failure
 - [x] Spawn announcements — Serverwide success message (player, tier, chunk coords, biome)
-- [ ] Advancement/toast — Optional notification on first chunk spawn
+- [x] Advancement/toast — Optional notification on first chunk spawn
 
 #### 12.2 Debug & Admin Tools
 - [x] Debug command — `/bbh:tpSource <biome_id> [x y z]` (teleport into the live source dimension for inspection)
-- [ ] Force spawn command — Admin command to spawn specific biome chunk
-- [ ] Tier info command — List biomes in each tier
+- [x] Force spawn command — Admin command to spawn specific biome chunk
+- [x] Tier info command — List biomes in each tier
 
 **Suggested commit message:** `feat: Phase 12 — polish, UX feedback, and admin commands`
 
@@ -1006,9 +1006,9 @@ None at this time.
 | 7 | Mob Spawning | ✅ Completed |
 | 8 | Configuration | ✅ Completed |
 | 9 | Block Post-Processing | ✅ Completed |
-| 10 | Multiplayer Support | 🔄 In Progress |
-| 11 | Performance & Disk | 🔄 In Progress |
-| 12 | Polish & UX | 🔄 In Progress |
+| 10 | Multiplayer Support | ✅ Completed |
+| 11 | Performance & Disk | ✅ Completed |
+| 12 | Polish & UX | ✅ Completed |
 | 13 | Testing | ⬜ Not Started |
 
 > **Note:** Platform-specific code is integrated into each phase as needed, not deferred to a separate phase.

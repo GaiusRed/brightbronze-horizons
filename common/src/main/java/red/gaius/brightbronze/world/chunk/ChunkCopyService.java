@@ -6,6 +6,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.DoubleTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ChunkHolder;
 import net.minecraft.util.ProblemReporter;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntitySpawnReason;
@@ -21,6 +22,8 @@ import net.minecraft.world.level.block.LeavesBlock;
 import net.minecraft.world.level.block.LiquidBlock;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.chunk.ChunkAccess;
+import net.minecraft.world.level.chunk.ChunkStatus;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.storage.TagValueInput;
 import net.minecraft.world.level.storage.TagValueOutput;
@@ -30,10 +33,13 @@ import net.minecraft.world.phys.AABB;
 import red.gaius.brightbronze.BrightbronzeHorizons;
 import red.gaius.brightbronze.world.rules.BlockReplacementRule;
 
+import com.mojang.datafixers.util.Either;
+
 import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * Service for copying chunks from source dimensions to the playable world.
@@ -102,6 +108,12 @@ public class ChunkCopyService {
         private boolean success;
         private int nextY;
 
+        @Nullable
+        private CompletableFuture<Either<ChunkAccess, ChunkHolder.ChunkLoadingFailure>> sourceChunkFuture;
+        @Nullable
+        private CompletableFuture<Either<ChunkAccess, ChunkHolder.ChunkLoadingFailure>> targetChunkFuture;
+        private boolean chunksReady;
+
         private ChunkCopyJob(
             ServerLevel sourceLevel,
             ChunkPos sourceChunkPos,
@@ -141,6 +153,43 @@ public class ChunkCopyService {
                     // Force-load both chunks for the duration of the job.
                     sourceLevel.setChunkForced(sourceChunkPos.x, sourceChunkPos.z, true);
                     targetLevel.setChunkForced(targetChunkPos.x, targetChunkPos.z, true);
+
+                    sourceChunkFuture = sourceLevel.getChunkSource().getChunkFuture(
+                        sourceChunkPos.x,
+                        sourceChunkPos.z,
+                        ChunkStatus.FULL,
+                        true
+                    );
+                    targetChunkFuture = targetLevel.getChunkSource().getChunkFuture(
+                        targetChunkPos.x,
+                        targetChunkPos.z,
+                        ChunkStatus.FULL,
+                        true
+                    );
+                }
+
+                if (!chunksReady) {
+                    if (sourceChunkFuture == null || targetChunkFuture == null) {
+                        markFinished(false);
+                        return new Result(true, false);
+                    }
+
+                    if (!sourceChunkFuture.isDone() || !targetChunkFuture.isDone()) {
+                        return new Result(false, false);
+                    }
+
+                    Either<ChunkAccess, ChunkHolder.ChunkLoadingFailure> sourceReady =
+                        sourceChunkFuture.getNow(Either.right(ChunkHolder.ChunkLoadingFailure.UNLOADED));
+                    Either<ChunkAccess, ChunkHolder.ChunkLoadingFailure> targetReady =
+                        targetChunkFuture.getNow(Either.right(ChunkHolder.ChunkLoadingFailure.UNLOADED));
+
+                    if (sourceReady.left().isEmpty() || targetReady.left().isEmpty()) {
+                        BrightbronzeHorizons.LOGGER.warn("Chunk copy aborted: source/target chunk failed to load");
+                        markFinished(false);
+                        return new Result(true, false);
+                    }
+
+                    chunksReady = true;
                 }
 
                 int boundedLayers = Math.max(1, layersPerTick);

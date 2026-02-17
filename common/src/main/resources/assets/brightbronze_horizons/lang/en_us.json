@@ -37,5 +37,8 @@
   "message.brightbronze_horizons.spawner.break_failed": "Chunk was created, but the spawner could not break cleanly.",
   "message.brightbronze_horizons.spawner.not_implemented": "Chunk spawning not yet implemented - Phase 3 in progress!",
   "message.brightbronze_horizons.spawner.already_spawned": "This chunk has already been spawned!",
-  "message.brightbronze_horizons.spawner.not_adjacent": "Can only spawn chunks adjacent to the playable area!"
+  "message.brightbronze_horizons.spawner.not_adjacent": "Can only spawn chunks adjacent to the playable area!",
+
+  "advancement.brightbronze_horizons.first_chunk_spawn.title": "Horizons Unfold",
+  "advancement.brightbronze_horizons.first_chunk_spawn.description": "Spawn your first new chunk"
 }
