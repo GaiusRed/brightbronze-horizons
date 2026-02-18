@@ -1,6 +1,8 @@
 package red.gaius.brightbronze.world.chunk;
 
 import net.minecraft.core.SectionPos;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.chunk.ChunkAccess;
@@ -10,10 +12,12 @@ import net.minecraft.world.level.levelgen.structure.Structure;
 import net.minecraft.world.level.levelgen.structure.StructureStart;
 import red.gaius.brightbronze.BrightbronzeHorizons;
 import red.gaius.brightbronze.config.BrightbronzeConfig;
-import red.gaius.brightbronze.world.PlayableAreaData;
 
 import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
@@ -27,10 +31,12 @@ import java.util.Set;
  * they span. Those additional chunks are also scanned for structures, which
  * are also completed, up to a configurable limit.
  * 
- * <p>The cascade is controlled by two limits:
+ * <p>The cascade is controlled by several limits:
  * <ul>
  *   <li>{@code maxStructureCompletionStructures} - max structures to complete (default: 16)</li>
  *   <li>{@code maxStructureCompletionChunks} - hard cap on total chunks (default: 256)</li>
+ *   <li>{@code maxStructureCascadeDepth} - max BFS hops from trigger chunk (default: 5)</li>
+ *   <li>{@code structureCompletionBlacklist} - structure types to skip entirely</li>
  * </ul>
  */
 public final class StructureCompletionService {
@@ -44,21 +50,42 @@ public final class StructureCompletionService {
      * 
      * @param chunksToSpawn Set of chunk positions that need to be spawned to complete structures
      * @param structureCount Number of structures discovered
+     * @param structureNames Human-readable names of discovered structures
      * @param hitStructureLimit Whether the structure limit was reached
      * @param hitChunkLimit Whether the chunk limit was reached
+     * @param skippedExistingChunks Number of chunks skipped because they already exist
      */
     public record StructureCompletionResult(
             Set<ChunkPos> chunksToSpawn,
             int structureCount,
+            List<String> structureNames,
             boolean hitStructureLimit,
-            boolean hitChunkLimit
+            boolean hitChunkLimit,
+            int skippedExistingChunks
     ) {
         public static StructureCompletionResult empty() {
-            return new StructureCompletionResult(Set.of(), 0, false, false);
+            return new StructureCompletionResult(Set.of(), 0, List.of(), false, false, 0);
         }
 
         public boolean hasChunksToSpawn() {
             return !chunksToSpawn.isEmpty();
+        }
+
+        /**
+         * @return true if the structure was only partially materialized due to existing chunks or limits
+         */
+        public boolean isPartial() {
+            return skippedExistingChunks > 0 || hitStructureLimit || hitChunkLimit;
+        }
+
+        /**
+         * @return A formatted string of structure names for display (e.g., "Village, Pillager Outpost")
+         */
+        public String formattedStructureNames() {
+            if (structureNames.isEmpty()) {
+                return "Unknown Structure";
+            }
+            return String.join(", ", structureNames);
         }
     }
 
@@ -91,21 +118,30 @@ public final class StructureCompletionService {
 
         int maxStructures = config.maxStructureCompletionStructures;
         int maxChunks = config.maxStructureCompletionChunks;
+        int maxCascadeDepth = config.maxStructureCascadeDepth;
+        Set<ResourceLocation> blacklist = config.getStructureCompletionBlacklistSet();
 
         // Track discovered structures by their identity (StructureStart reference)
         Set<StructureStart> discoveredStructures = new HashSet<>();
+        List<String> structureNames = new ArrayList<>();
         Set<ChunkPos> chunksToSpawn = new HashSet<>();
+        Set<ChunkPos> skippedChunks = new HashSet<>(); // chunks that already exist
+        
+        // BFS with depth tracking: Map of chunk -> cascade depth
+        Map<ChunkPos, Integer> chunkDepths = new HashMap<>();
         Queue<ChunkPos> chunksToProcess = new ArrayDeque<>();
         Set<ChunkPos> processedChunks = new HashSet<>();
 
-        // Start with the trigger chunk
+        // Start with the trigger chunk at depth 0
         chunksToProcess.add(triggerChunkPos);
+        chunkDepths.put(triggerChunkPos, 0);
 
         boolean hitStructureLimit = false;
         boolean hitChunkLimit = false;
 
         while (!chunksToProcess.isEmpty()) {
             ChunkPos chunkPos = chunksToProcess.poll();
+            int currentDepth = chunkDepths.getOrDefault(chunkPos, 0);
 
             if (processedChunks.contains(chunkPos)) {
                 continue;
@@ -120,8 +156,18 @@ public final class StructureCompletionService {
 
             // Find structure starts in this chunk
             Map<Structure, StructureStart> starts = sourceChunk.getAllStarts();
-            for (StructureStart start : starts.values()) {
+            for (Map.Entry<Structure, StructureStart> entry : starts.entrySet()) {
+                Structure structure = entry.getKey();
+                StructureStart start = entry.getValue();
+                
                 if (!start.isValid()) {
+                    continue;
+                }
+
+                // Check blacklist
+                if (isStructureBlacklisted(structure, blacklist)) {
+                    BrightbronzeHorizons.LOGGER.debug("Skipping blacklisted structure: {}", 
+                            getStructureRegistryId(structure));
                     continue;
                 }
 
@@ -135,16 +181,23 @@ public final class StructureCompletionService {
                 }
 
                 discoveredStructures.add(start);
+                structureNames.add(getStructureDisplayName(structure));
+                
                 BoundingBox boundingBox = start.getBoundingBox();
                 Set<ChunkPos> structureChunks = getChunksInBoundingBox(boundingBox);
 
                 for (ChunkPos structureChunk : structureChunks) {
-                    if (!alreadySpawnedChunks.contains(structureChunk)) {
+                    if (alreadySpawnedChunks.contains(structureChunk)) {
+                        skippedChunks.add(structureChunk);
+                    } else {
                         chunksToSpawn.add(structureChunk);
 
-                        // Cascade: add unprocessed chunks for structure scanning
-                        if (!processedChunks.contains(structureChunk)) {
-                            chunksToProcess.add(structureChunk);
+                        // Cascade: add unprocessed chunks for structure scanning if within depth limit
+                        if (!processedChunks.contains(structureChunk) && currentDepth < maxCascadeDepth) {
+                            if (!chunkDepths.containsKey(structureChunk)) {
+                                chunksToProcess.add(structureChunk);
+                                chunkDepths.put(structureChunk, currentDepth + 1);
+                            }
                         }
                     }
                 }
@@ -164,6 +217,11 @@ public final class StructureCompletionService {
             for (Map.Entry<Structure, it.unimi.dsi.fastutil.longs.LongSet> entry : references.entrySet()) {
                 Structure structure = entry.getKey();
                 it.unimi.dsi.fastutil.longs.LongSet refChunkLongs = entry.getValue();
+
+                // Check blacklist for references too
+                if (isStructureBlacklisted(structure, blacklist)) {
+                    continue;
+                }
 
                 for (long refChunkLong : refChunkLongs) {
                     ChunkPos refChunkPos = new ChunkPos(refChunkLong);
@@ -187,16 +245,23 @@ public final class StructureCompletionService {
                     }
 
                     discoveredStructures.add(start);
+                    structureNames.add(getStructureDisplayName(structure));
+                    
                     BoundingBox boundingBox = start.getBoundingBox();
                     Set<ChunkPos> structureChunks = getChunksInBoundingBox(boundingBox);
 
                     for (ChunkPos structureChunk : structureChunks) {
-                        if (!alreadySpawnedChunks.contains(structureChunk)) {
+                        if (alreadySpawnedChunks.contains(structureChunk)) {
+                            skippedChunks.add(structureChunk);
+                        } else {
                             chunksToSpawn.add(structureChunk);
 
-                            // Cascade
-                            if (!processedChunks.contains(structureChunk)) {
-                                chunksToProcess.add(structureChunk);
+                            // Cascade with depth limit
+                            if (!processedChunks.contains(structureChunk) && currentDepth < maxCascadeDepth) {
+                                if (!chunkDepths.containsKey(structureChunk)) {
+                                    chunksToProcess.add(structureChunk);
+                                    chunkDepths.put(structureChunk, currentDepth + 1);
+                                }
                             }
                         }
                     }
@@ -237,17 +302,74 @@ public final class StructureCompletionService {
 
         if (!chunksToSpawn.isEmpty()) {
             BrightbronzeHorizons.LOGGER.debug(
-                    "Structure completion from chunk {}: {} structures found, {} additional chunks to spawn",
-                    triggerChunkPos, discoveredStructures.size(), chunksToSpawn.size()
+                    "Structure completion from chunk {}: {} structures found ({}), {} additional chunks to spawn, {} skipped (already exist)",
+                    triggerChunkPos, discoveredStructures.size(), String.join(", ", structureNames), 
+                    chunksToSpawn.size(), skippedChunks.size()
             );
         }
 
         return new StructureCompletionResult(
                 chunksToSpawn,
                 discoveredStructures.size(),
+                structureNames,
                 hitStructureLimit,
-                hitChunkLimit
+                hitChunkLimit,
+                skippedChunks.size()
         );
+    }
+
+    /**
+     * Gets a human-readable display name for a structure.
+     */
+    private static String getStructureDisplayName(Structure structure) {
+        // Try to get the registry name and convert to display format
+        ResourceLocation id = BuiltInRegistries.STRUCTURE_TYPE.getKey(structure.type());
+        if (id == null) {
+            return "Unknown Structure";
+        }
+        
+        String path = id.getPath();
+        
+        // Jigsaw is a generic structure type used by many structures (villages, bastions, etc.)
+        // The actual structure name isn't easily available, so show "Unknown Structure"
+        if ("jigsaw".equals(path)) {
+            return "Unknown Structure";
+        }
+        
+        // Convert e.g. "minecraft:village" -> "Village"
+        // Handle underscores: "pillager_outpost" -> "Pillager Outpost"
+        String[] words = path.split("_");
+        StringBuilder displayName = new StringBuilder();
+        for (String word : words) {
+            if (!word.isEmpty()) {
+                if (displayName.length() > 0) {
+                    displayName.append(" ");
+                }
+                displayName.append(Character.toUpperCase(word.charAt(0)));
+                if (word.length() > 1) {
+                    displayName.append(word.substring(1));
+                }
+            }
+        }
+        return displayName.toString();
+    }
+
+    /**
+     * Gets the registry ID for a structure (for blacklist checking).
+     */
+    private static ResourceLocation getStructureRegistryId(Structure structure) {
+        return BuiltInRegistries.STRUCTURE_TYPE.getKey(structure.type());
+    }
+
+    /**
+     * Checks if a structure is in the blacklist.
+     */
+    private static boolean isStructureBlacklisted(Structure structure, Set<ResourceLocation> blacklist) {
+        if (blacklist.isEmpty()) {
+            return false;
+        }
+        ResourceLocation id = getStructureRegistryId(structure);
+        return id != null && blacklist.contains(id);
     }
 
     /**

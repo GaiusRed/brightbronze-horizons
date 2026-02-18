@@ -54,8 +54,9 @@ Structure-completion chunks **may themselves contain structures**, which should 
 
 - When spawning structure-completion chunks, **recursively check for new structures** in those chunks.
 - Track all structures discovered across the cascade.
-- Stop when **no new structures are found** or the **structure limit is reached**.
-- Default limit: **16 structures** per player-triggered spawn.
+- Stop when **no new structures are found**, the **structure limit is reached**, or **cascade depth exceeded**.
+- Default limits: **16 structures**, **5 cascade depth** per player-triggered spawn.
+- Blacklisted structures (e.g., mineshafts) are skipped entirely and don't contribute to cascade.
 
 **Algorithm:**
 
@@ -97,33 +98,73 @@ Add to `config/brightbronze_horizons.json`:
 | `enableStructureCompletion` | Boolean | `true` | If true, spawning a chunk automatically spawns all chunks needed to complete any structures in that chunk. If false, structures may be partially cut off (legacy behavior). |
 | `maxStructureCompletionStructures` | Integer | `16` | Maximum number of structures that can be completed from a single player-triggered spawn. Cascading stops when this limit is reached. |
 | `maxStructureCompletionChunks` | Integer | `256` | Hard safety limit on total chunks spawned for structure completion. Prevents extreme cases where 16 small structures somehow span excessive area. |
+| `maxStructureCascadeDepth` | Integer | `5` | Maximum BFS depth for cascade detection. Depth 0 = only trigger chunk's structures. Higher values allow discovering structures in structure-completion chunks. |
+| `structureCompletionBlacklist` | String[] | `["minecraft:mineshaft", "minecraft:mineshaft_mesa"]` | Structure types to exclude from completion. Blacklisted structures are ignored entirely (no completion, no cascade). |
 
-### 3.2 Per-Structure Exclusions (Future)
+### 3.2 Structure Blacklist
 
-A future enhancement may allow excluding specific structure types from completion logic via data pack rules. This is **not in scope** for the initial implementation.
+Some structures are problematic for automatic completion:
+
+- **Mineshafts** span dozens of chunks and frequently cascade into neighboring mineshafts, causing massive chunk explosions.
+- The default blacklist excludes mineshafts, which are thematically meant to be explored gradually anyway.
+
+Modpacks can customize the blacklist to exclude other problematic structures:
+
+```json
+"structureCompletionBlacklist": [
+  "minecraft:mineshaft",
+  "minecraft:mineshaft_mesa",
+  "modname:sprawling_dungeon"
+]
+```
 
 ## 4. Player Experience
 
-### 4.1 Messaging
+### 4.1 Order of Operations
 
-When structure completion spawns additional chunks:
+When a player activates a Horizon Anchor:
 
-- **Do not** send individual announcements for each structure-completion chunk.
-- **Do** include structure completion info in the original spawn announcement:
-  - Example: `"PlayerName spawned a Plains chunk at (5, 3) [COPPER] — completed 1 structure (Village), 4 additional chunks spawned."`
-- If structure completion is disabled or hits the cap, inform the player:
-  - Example: `"Structure extends beyond completion limit; some parts may be cut off."`
+1. **Validate** — Check if spawn is valid (adjacent, not already spawned, etc.)
+2. **Break Anchor** — Immediately destroy the anchor block (confirms action accepted)
+3. **Copy Primary Chunk** — Async/tick-bounded chunk copy begins
+4. **Detect Structures** — After primary chunk completes, scan for structures
+5. **If Structures Found:**
+   - Announce: `"Structure detected: Village. Materializing 4 chunks..."`
+   - Copy ALL structure chunks **synchronously** (appear at once, not gradually)
+   - Announce: `"Village has materialized at (5, 3)."`
+6. **If No Structures** — Standard announcement only
 
-### 4.2 Visual Feedback
+### 4.2 Messaging
+
+Structure completion messaging:
+
+- **Materializing notice:** `"Structure detected: Village. Materializing 4 chunks..."` — Sent before structure chunks are copied.
+- **Complete notice:** `"Village has materialized at (5, 3)."` — Sent after all structure chunks are copied.
+- **Partial notice:** `"Village partially materialized at (5, 3) - 3 chunks spawned (some areas already explored or limit reached)."` — Sent if some chunks couldn't be spawned.
+
+Individual structure-completion chunks do **not** get their own announcements.
+
+### 4.3 Conflict Handling
+
+If structure completion would spawn chunks that already exist:
+
+- **Skip existing chunks** — Never overwrite already-spawned chunks.
+- **Track as partial** — Record that the structure was partially materialized.
+- **Announce partial** — Let players know some parts weren't spawned.
+
+Same handling applies when hitting the `maxStructureCompletionChunks` limit.
+
+### 4.4 Visual Feedback
 
 - Structure-completion chunks spawn with the same particle/sound effects as normal chunks.
-- All chunks (original + structure) appear simultaneously (within the same tick-bounded job sequence).
+- All structure chunks appear **simultaneously** (synchronous copy, not queued).
+- This prevents the surreal "distant chunks first" effect from gradual loading.
 
-### 4.3 Cost & Consumption
+### 4.5 Cost & Consumption
 
 - Structure completion is **free** — the player pays only for the original Chunk Spawner.
 - This is a quality-of-life feature, not an additional resource sink.
-- The original spawner still breaks and drops loot per existing behavior.
+- The original spawner breaks **immediately** when activated (not after chunks complete).
 
 ## 5. Implementation Approach
 
@@ -131,11 +172,11 @@ When structure completion spawns additional chunks:
 
 | Component | Changes Required |
 | :--- | :--- |
-| `ChunkCopyService` | Add structure detection after chunk copy; return list of structure-completion chunk positions. |
-| `ChunkExpansionManager` | After primary chunk completes, enqueue structure-completion chunks. |
-| `StartingAreaManager` | After copying each starting chunk, collect structure chunks; batch-copy all. |
-| `PlayableAreaData` | Track structure-triggered chunks with metadata. |
-| `BrightbronzeConfig` | Add `enableStructureCompletion` and `maxStructureCompletionChunks`. |
+| `StructureCompletionService` | New service: detects structures in chunks, calculates completion chunks with cascading, returns structure names. |
+| `ChunkExpansionManager` | Break spawner immediately on enqueue; after primary chunk, copy structure chunks synchronously; send materializing/complete messages. |
+| `StartingAreaManager` | After copying each starting chunk, collect structure chunks; batch-copy all synchronously. |
+| `PlayableAreaData` | Track structure-triggered chunks with metadata (`structureTriggered`, `triggeringChunk`). |
+| `BrightbronzeConfig` | Add `enableStructureCompletion`, `maxStructureCompletionStructures`, `maxStructureCompletionChunks`. |
 
 ### 5.2 Structure Query API
 
@@ -224,16 +265,19 @@ function collectStructureCompletionChunks(sourceLevel, triggerChunkPos, biomeId)
     )
 ```
 
-### 5.4 Tick-Bounded Execution
+### 5.4 Synchronous Structure Completion
 
-Structure-completion chunks are processed within the existing tick-bounded framework:
+When a structure is detected, all associated chunks are copied **synchronously** (not queued):
 
-1. Primary chunk copy job completes.
-2. Structure detection runs (fast — just bounding box queries).
-3. Additional chunk copy jobs are enqueued to `ChunkExpansionManager`.
-4. Jobs execute over subsequent ticks (respecting `chunkCopyLayersPerTick`).
+1. Spawner breaks immediately (player gets instant feedback).
+2. "Materializing" message is sent to all players.
+3. Structure detection runs (fast — just bounding box queries).
+4. All structure-completion chunks are copied **synchronously** via direct `ChunkCopyService.copyChunk()` calls.
+5. "Complete" or "Partial" message is sent based on result.
 
-This avoids server freezes even when completing large structures.
+This ensures structures appear all at once rather than gradually loading in, providing a better player experience. While this may cause a brief pause for very large structures, the `maxStructureCompletionChunks` cap (default: 256) bounds the worst-case impact.
+
+> **Design Note:** The previous tick-bounded approach caused structures to load chunk-by-chunk, with distant chunks appearing first and gradually filling in toward the player. This was disorienting. The synchronous approach makes the entire structure "pop in" at once, which feels more intentional and magical.
 
 ## 6. Edge Cases & Constraints
 
@@ -297,6 +341,9 @@ Some structures can span chunk boundaries where different biomes meet. In our sy
 - [ ] Test with `maxStructureCompletionChunks: 16`; verify chunk cap is respected.
 - [ ] Verify structure-completion chunks appear in playable area data.
 - [ ] Verify frontier correctly includes structure-completion chunk edges.
+- [ ] **NEW:** Verify mineshafts are NOT completed (blacklist working).
+- [ ] **NEW:** Test custom blacklist entries.
+- [ ] **NEW:** Test cascade depth limit with `maxStructureCascadeDepth: 1`.
 
 ### 7.2 Edge Case Testing
 
@@ -305,6 +352,8 @@ Some structures can span chunk boundaries where different biomes meet. In our sy
 - [ ] Spawn near village + pillager outpost cluster — verify both complete via cascade.
 - [ ] Verify cascade stops at 16 structures.
 - [ ] Verify cascade stops at 256 chunks.
+- [ ] **NEW:** Verify cascade stops at depth limit.
+- [ ] **NEW:** Verify blacklisted structures don't cascade.
 - [ ] Test on dedicated server with multiple players.
 
 ---
@@ -320,6 +369,9 @@ Some structures can span chunk boundaries where different biomes meet. In our sy
 - [x] Add `enableStructureCompletion` to `BrightbronzeConfig.Data`
 - [x] Add `maxStructureCompletionStructures` to `BrightbronzeConfig.Data` (default: 16)
 - [x] Add `maxStructureCompletionChunks` to `BrightbronzeConfig.Data` (default: 256)
+- [x] Add `maxStructureCascadeDepth` to `BrightbronzeConfig.Data` (default: 5)
+- [x] Add `structureCompletionBlacklist` to `BrightbronzeConfig.Data` (default: mineshaft, mineshaft_mesa)
+- [x] Add `getStructureCompletionBlacklistSet()` helper for efficient lookup
 - [x] Add config defaults and JSON serialization
 - [ ] Update config documentation in `ModpackConfiguration.md`
 
@@ -340,7 +392,12 @@ Some structures can span chunk boundaries where different biomes meet. In our sy
 - [x] Implement cascading structure detection with breadth-first search
 - [x] Track discovered structures in `Set<StructureStart>` to avoid duplicates
 - [x] Stop cascade when `maxStructureCompletionStructures` (16) reached
-- [x] Return `StructureCompletionResult` with chunks, structure count, and limit flags
+- [x] Return `StructureCompletionResult` with chunks, structure count, structure names, and limit flags
+- [x] Extract human-readable structure names via `getStructureDisplayName()` (e.g., "Village", "Pillager Outpost")
+- [x] Track `skippedExistingChunks` count for partial materialization detection
+- [x] **NEW:** Implement `isStructureBlacklisted()` to skip blacklisted structures
+- [x] **NEW:** Track cascade depth per chunk; stop cascade at `maxStructureCascadeDepth`
+- [x] **NEW:** Jigsaw structure type displays as "Unknown Structure" (generic type used by many structures)
 
 **Suggested commit message:** `feat(structure): Phase SC-2 — structure detection service`
 
@@ -352,11 +409,14 @@ Some structures can span chunk boundaries where different biomes meet. In our sy
 
 - [x] Modify `ChunkExpansionManager.ActiveJob` to call structure detection after primary chunk copy
 - [x] Call `StructureCompletionService.collectStructureCompletionChunks()` after primary chunk copy
-- [x] Modify `ChunkExpansionManager` to enqueue structure-completion chunks
+- [x] ~~Modify `ChunkExpansionManager` to enqueue structure-completion chunks~~ → **Changed:** Copy structure chunks **synchronously** (all at once)
 - [x] Structure-completion chunks marked with `structureTriggered: true` metadata
 - [x] Apply `maxStructureCompletionChunks` hard cap in `ChunkExpansionManager`
 - [x] Structure-completion chunks do NOT break spawners
 - [x] Structure-completion chunks do NOT send individual announcements
+- [x] **NEW:** Break spawner **immediately** in `enqueue()` (not after chunk copy completes)
+- [x] **NEW:** Structure chunks copied synchronously via `ChunkCopyService.copyChunk()` (appear all at once)
+- [x] **NEW:** Skip chunks that already exist (never overwrite) and track as partial
 
 **Suggested commit message:** `feat(structure): Phase SC-3 — integrate structure completion with chunk copy`
 
@@ -385,6 +445,7 @@ Some structures can span chunk boundaries where different biomes meet. In our sy
 - [x] Update `PlayableAreaData` codec for new fields (with backward compatibility)
 - [x] Store metadata when spawning structure-completion chunks
 - [x] Ensure frontier detection includes structure-completion chunk edges (inherits from existing `addChunk()` behavior)
+- [x] **NEW:** `ExpansionResult` extended with `skippedExistingChunks` and `structureNames` fields
 
 **Suggested commit message:** `feat(structure): Phase SC-5 — metadata tracking for structure chunks`
 
@@ -394,12 +455,19 @@ Some structures can span chunk boundaries where different biomes meet. In our sy
 
 **Status:** ✅ Complete
 
-- [x] Modify spawn announcement to include structure completion info
-- [x] Add message for structure count and additional chunks spawned (`announce_with_structures`)
-- [x] Add warning message when `maxStructureCompletionStructures` cap is hit (`structure_limit_reached`)
-- [x] Add warning message when `maxStructureCompletionChunks` cap is hit (`structure_chunk_limit_reached`)
+- [x] ~~Modify spawn announcement to include structure completion info~~ → **Changed:** Separate announcement flow
+- [x] ~~Add message `announce_with_structures`~~ → **Removed:** Replaced with materializing/complete flow
+- [x] ~~Add warning messages for limits~~ → **Changed:** Handled via partial materialization message
 - [x] Add translatable strings to `en_us.json`
 - [x] Structure-completion chunks use same effects as normal chunks (inherits from existing code path)
+- [x] **NEW:** "Materializing" message: `"Structure detected: Village. Materializing 4 chunks..."`
+- [x] **NEW:** "Complete" message: `"Village has materialized at (5, 3)."`
+- [x] **NEW:** "Partial" message: `"Village partially materialized at (5, 3) - 3 chunks spawned (some areas already explored or limit reached)."`
+
+**Translation keys added:**
+- `message.brightbronze_horizons.spawner.structure_materializing`
+- `message.brightbronze_horizons.spawner.structure_complete`
+- `message.brightbronze_horizons.spawner.structure_partial`
 
 **Suggested commit message:** `feat(structure): Phase SC-6 — messaging and UX for structure completion`
 
@@ -407,9 +475,9 @@ Some structures can span chunk boundaries where different biomes meet. In our sy
 
 ### Phase SC-7: Testing & Validation
 
-**Status:** ⬜ Not Started
+**Status:** 🔄 In Progress
 
-- [ ] Test village completion in starting area
+- [x] Test village completion in starting area *(confirmed working)*
 - [ ] Test village completion via Copper spawner
 - [ ] Test ocean monument completion via Iron spawner
 - [ ] Test bastion/fortress completion via Gold spawner
@@ -418,6 +486,9 @@ Some structures can span chunk boundaries where different biomes meet. In our sy
 - [ ] Test structure cap `maxStructureCompletionStructures`
 - [ ] Test chunk cap `maxStructureCompletionChunks`
 - [ ] Verify no cascade loops
+- [ ] Test spawner breaks immediately (before chunk copy)
+- [ ] Test structure chunks appear all at once (synchronous)
+- [ ] Test partial materialization when chunks already exist
 - [ ] Test on Fabric
 - [ ] Test on NeoForge
 
@@ -435,7 +506,7 @@ Some structures can span chunk boundaries where different biomes meet. In our sy
 | SC-4 | Starting Area Integration | ✅ Complete |
 | SC-5 | Metadata & Tracking | ✅ Complete |
 | SC-6 | Messaging & UX | ✅ Complete |
-| SC-7 | Testing & Validation | ⬜ Not Started |
+| SC-7 | Testing & Validation | 🔄 In Progress |
 
 ---
 

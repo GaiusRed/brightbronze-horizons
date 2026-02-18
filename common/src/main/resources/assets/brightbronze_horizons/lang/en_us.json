@@ -36,7 +36,6 @@
   "message.brightbronze_horizons.spawner.not_at_edge": "Place the Chunk Spawner on the edge of a chunk.",
   "message.brightbronze_horizons.spawner.success": "Spawned %s tier chunk at (%d, %d) - %s",
   "message.brightbronze_horizons.spawner.announce": "%s spawned a %s tier chunk at (%d, %d) - %s",
-  "message.brightbronze_horizons.spawner.announce_with_structures": "%s spawned a %s tier chunk at (%d, %d) - %s (completed %d structures across %d chunks)",
   "message.brightbronze_horizons.spawner.no_biomes": "This tier has no eligible biomes configured.",
   "message.brightbronze_horizons.spawner.tier_disabled": "%s tier chunk spawning is disabled on this server.",
   "message.brightbronze_horizons.spawner.copy_failed": "Could not create the new chunk. Try again.",
@@ -46,8 +45,9 @@
   "message.brightbronze_horizons.spawner.not_implemented": "Chunk spawning not yet implemented - Phase 3 in progress!",
   "message.brightbronze_horizons.spawner.already_spawned": "This chunk has already been spawned!",
   "message.brightbronze_horizons.spawner.not_adjacent": "Can only spawn chunks adjacent to the playable area!",
-  "message.brightbronze_horizons.spawner.structure_limit_reached": "Structure completion limit reached - some structures may be incomplete.",
-  "message.brightbronze_horizons.spawner.structure_chunk_limit_reached": "Chunk limit reached during structure completion - some structures may be incomplete.",
+  "message.brightbronze_horizons.spawner.structure_materializing": "Structure detected: %s. Materializing %d chunks...",
+  "message.brightbronze_horizons.spawner.structure_complete": "%s has materialized at (%d, %d).",
+  "message.brightbronze_horizons.spawner.structure_partial": "%s partially materialized at (%d, %d) - %d chunks spawned (some areas already explored or limit reached).",
 
   "advancement.brightbronze_horizons.first_chunk_spawn.title": "Horizons Unfold",
   "advancement.brightbronze_horizons.first_chunk_spawn.description": "Spawn your first new chunk"
