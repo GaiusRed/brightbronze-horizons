@@ -293,13 +293,29 @@ public class PlayableAreaData extends SavedData {
 
     /**
      * Records metadata about a spawned chunk for Phase 10/11 reporting and pruning.
+     * 
+     * @param pos The chunk position
+     * @param biomeId The biome ID used for the chunk
+     * @param tierName The tier name of the spawner
+     * @param structureTriggered Whether this chunk was spawned due to structure completion
+     * @param triggeringChunk The original chunk that triggered structure completion (null if not structure-triggered)
      */
-    public void recordSpawnedChunk(ChunkPos pos, ResourceLocation biomeId, String tierName) {
-        if (pos == null || biomeId == null || tierName == null) {
+    public void recordSpawnedChunk(ChunkPos pos, @org.jetbrains.annotations.Nullable ResourceLocation biomeId, String tierName, boolean structureTriggered, @org.jetbrains.annotations.Nullable ChunkPos triggeringChunk) {
+        if (pos == null || tierName == null) {
             return;
         }
-        spawnedChunkMeta.put(chunkKey(pos), new SpawnedChunkMeta(pos, biomeId, tierName));
+        // Use a placeholder biome if null (can happen for structure-triggered chunks in edge cases)
+        ResourceLocation effectiveBiome = biomeId != null ? biomeId : ResourceLocation.withDefaultNamespace("plains");
+        spawnedChunkMeta.put(chunkKey(pos), new SpawnedChunkMeta(pos, effectiveBiome, tierName, structureTriggered, triggeringChunk));
         setDirty();
+    }
+
+    /**
+     * Records metadata about a spawned chunk for Phase 10/11 reporting and pruning.
+     * Convenience overload for non-structure-triggered chunks.
+     */
+    public void recordSpawnedChunk(ChunkPos pos, ResourceLocation biomeId, String tierName) {
+        recordSpawnedChunk(pos, biomeId, tierName, false, null);
     }
 
     public Set<ResourceLocation> getRecordedBiomeIds() {
@@ -322,12 +338,14 @@ public class PlayableAreaData extends SavedData {
         return (((long) pos.x) << 32) ^ (pos.z & 0xFFFFFFFFL);
     }
 
-    public record SpawnedChunkMeta(ChunkPos chunk, ResourceLocation biome, String tier) {
+    public record SpawnedChunkMeta(ChunkPos chunk, ResourceLocation biome, String tier, boolean structureTriggered, @org.jetbrains.annotations.Nullable ChunkPos triggeringChunk) {
         static final Codec<SpawnedChunkMeta> CODEC = RecordCodecBuilder.create(instance ->
             instance.group(
                 CHUNK_POS_CODEC.fieldOf("chunk").forGetter(SpawnedChunkMeta::chunk),
                 ResourceLocation.CODEC.fieldOf("biome").forGetter(SpawnedChunkMeta::biome),
-                Codec.STRING.fieldOf("tier").forGetter(SpawnedChunkMeta::tier)
+                Codec.STRING.fieldOf("tier").forGetter(SpawnedChunkMeta::tier),
+                Codec.BOOL.optionalFieldOf("structure_triggered", false).forGetter(SpawnedChunkMeta::structureTriggered),
+                CHUNK_POS_CODEC.optionalFieldOf("triggering_chunk", null).forGetter(SpawnedChunkMeta::triggeringChunk)
             ).apply(instance, SpawnedChunkMeta::new)
         );
     }

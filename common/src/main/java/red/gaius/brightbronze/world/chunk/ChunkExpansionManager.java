@@ -27,12 +27,16 @@ import red.gaius.brightbronze.world.PlayableAreaData;
 import red.gaius.brightbronze.world.dimension.SourceDimensionManager;
 import red.gaius.brightbronze.world.mob.ChunkSpawnMobEvent;
 import red.gaius.brightbronze.world.rules.BiomeRuleManager;
+import red.gaius.brightbronze.world.rules.BlockReplacementRule;
 
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -79,7 +83,7 @@ public final class ChunkExpansionManager {
                                        @Nullable UUID playerId,
                                        @Nullable String playerName) {
 
-        return enqueue(overworld, spawnerPos, tier, targetChunk, biomeId, playerId, playerName, true, true);
+        return enqueue(overworld, spawnerPos, tier, targetChunk, biomeId, playerId, playerName, true, true, false, null);
     }
 
     public static EnqueueResult enqueue(ServerLevel overworld,
@@ -91,6 +95,21 @@ public final class ChunkExpansionManager {
                                        @Nullable String playerName,
                                        boolean enforceAdjacency,
                                        boolean breakSpawnerOnSuccess) {
+
+        return enqueue(overworld, spawnerPos, tier, targetChunk, biomeId, playerId, playerName, enforceAdjacency, breakSpawnerOnSuccess, false, null);
+    }
+
+    public static EnqueueResult enqueue(ServerLevel overworld,
+                                       @Nullable BlockPos spawnerPos,
+                                       ChunkSpawnerTier tier,
+                                       ChunkPos targetChunk,
+                                       ResourceLocation biomeId,
+                                       @Nullable UUID playerId,
+                                       @Nullable String playerName,
+                                       boolean enforceAdjacency,
+                                       boolean breakSpawnerOnSuccess,
+                                       boolean structureTriggered,
+                                       @Nullable ChunkPos triggeringChunk) {
 
         MinecraftServer server = overworld.getServer();
 
@@ -122,8 +141,19 @@ public final class ChunkExpansionManager {
             targetChunk,
             biomeId,
             playerId,
-            playerName
+            playerName,
+            structureTriggered,
+            triggeringChunk
         );
+
+        // Break the spawner IMMEDIATELY upon accepting the request (not after chunk copies)
+        // This gives instant feedback that the action was accepted.
+        if (!structureTriggered && breakSpawnerOnSuccess && spawnerPos != null) {
+            BlockState state = overworld.getBlockState(spawnerPos);
+            if (!state.isAir()) {
+                overworld.destroyBlock(spawnerPos, true);
+            }
+        }
 
         IN_FLIGHT_BY_CHUNK.put(key, request);
         QUEUE.addLast(request);
@@ -139,13 +169,13 @@ public final class ChunkExpansionManager {
 
             ServerLevel overworld = server.getLevel(Level.OVERWORLD);
             if (overworld == null) {
-                finishRequest(next, server, false, Component.literal("Overworld not loaded"), null);
+                finishRequest(next, server, false, Component.literal("Overworld not loaded"), null, ExpansionResult.failure());
                 return;
             }
 
             activeJob = startJob(overworld, next);
             if (activeJob == null) {
-                finishRequest(next, server, false, Component.translatable("message.brightbronze_horizons.spawner.copy_failed"), null);
+                finishRequest(next, server, false, Component.translatable("message.brightbronze_horizons.spawner.copy_failed"), null, ExpansionResult.failure());
             }
         }
 
@@ -182,18 +212,50 @@ public final class ChunkExpansionManager {
             biomeHolderOpt.get(),
             replacementRules
         );
-        return new ActiveJob(request, job);
+        return new ActiveJob(request, job, sourceLevel);
+    }
+
+    /**
+     * Result of a completed expansion, including structure completion information.
+     */
+    public record ExpansionResult(
+            boolean success,
+            int structureCount,
+            int structureChunksSpawned,
+            boolean hitStructureLimit,
+            boolean hitChunkLimit,
+            int skippedExistingChunks,
+            String structureNames
+    ) {
+        public static ExpansionResult failure() {
+            return new ExpansionResult(false, 0, 0, false, false, 0, "");
+        }
+
+        public static ExpansionResult simpleSuccess() {
+            return new ExpansionResult(true, 0, 0, false, false, 0, "");
+        }
+
+        /**
+         * @return true if structure was only partially materialized
+         */
+        public boolean isPartial() {
+            return skippedExistingChunks > 0 || hitStructureLimit || hitChunkLimit;
+        }
     }
 
     private static void finishRequest(ExpansionRequest request,
                                       MinecraftServer server,
                                       boolean success,
                                       @Nullable Component failure,
-                                      @Nullable ResourceLocation biomeId) {
+                                      @Nullable ResourceLocation biomeId,
+                                      ExpansionResult expansionResult) {
         IN_FLIGHT_BY_CHUNK.remove(chunkKey(request.targetChunk));
 
         if (!success) {
-            notifyPlayer(server, request.playerId, failure != null ? failure : Component.translatable("message.brightbronze_horizons.spawner.copy_failed"));
+            // Only notify on failure for non-structure-triggered chunks
+            if (!request.structureTriggered) {
+                notifyPlayer(server, request.playerId, failure != null ? failure : Component.translatable("message.brightbronze_horizons.spawner.copy_failed"));
+            }
             return;
         }
 
@@ -205,55 +267,63 @@ public final class ChunkExpansionManager {
         // Update persistent state.
         PlayableAreaData data = PlayableAreaData.get(server);
         data.addChunk(request.targetChunk);
-        data.recordSpawnedChunk(request.targetChunk, biomeId, request.tier.getName());
+        data.recordSpawnedChunk(
+            request.targetChunk,
+            biomeId,
+            request.tier.getName(),
+            request.structureTriggered,
+            request.triggeringChunk
+        );
 
         // Phase 7: one-time scripted mob spawns when a chunk is revealed.
         if (BrightbronzeConfig.get().enableChunkSpawnMobs) {
             ChunkSpawnMobEvent.fire(overworld, request.targetChunk, request.tier);
         }
 
-        // Break the spawner only on success (PRD).
-        if (request.breakSpawnerOnSuccess && request.spawnerPos != null) {
-            BlockState state = overworld.getBlockState(request.spawnerPos);
-            if (!state.isAir()) {
-                overworld.destroyBlock(request.spawnerPos, true);
-            }
-        }
+        // Note: Spawner is broken immediately in enqueue(), not here.
 
         // Phase 12: visual/audio feedback on successful spawn.
         spawnSuccessEffects(overworld, request.targetChunk);
 
-        // Phase 12: optional toast on first chunk spawn for the player.
-        awardFirstChunkAdvancement(server, request.playerId);
+        // Phase 12: optional toast on first chunk spawn for the player (only for non-structure-triggered).
+        if (!request.structureTriggered) {
+            awardFirstChunkAdvancement(server, request.playerId);
+        }
 
-        // PRD: announce success serverwide.
-        String who = request.playerName != null ? request.playerName : "Someone";
-        overworld.getServer().getPlayerList().broadcastSystemMessage(
-            Component.translatable(
+        // PRD: announce success serverwide — but NOT for structure-triggered chunks.
+        // Structure completion has its own announcements handled in handleStructureCompletion().
+        if (!request.structureTriggered) {
+            String who = request.playerName != null ? request.playerName : "Someone";
+
+            // Simple announcement for the primary chunk
+            // Structure details are announced separately by handleStructureCompletion()
+            Component announcement = Component.translatable(
                 "message.brightbronze_horizons.spawner.announce",
                 Component.literal(who),
                 request.tier.getName(),
                 request.targetChunk.x,
                 request.targetChunk.z,
                 biomeId.toString()
-            ),
-            false
-        );
+            );
 
-        // Local confirmation if player is online.
-        notifyPlayer(server, request.playerId,
-            Component.translatable(
-                "message.brightbronze_horizons.spawner.success",
-                request.tier.getName(),
-                request.targetChunk.x,
-                request.targetChunk.z,
-                biomeId.toString()
-            )
-        );
+            overworld.getServer().getPlayerList().broadcastSystemMessage(announcement, false);
+
+            // Local confirmation if player is online.
+            notifyPlayer(server, request.playerId,
+                Component.translatable(
+                    "message.brightbronze_horizons.spawner.success",
+                    request.tier.getName(),
+                    request.targetChunk.x,
+                    request.targetChunk.z,
+                    biomeId.toString()
+                )
+            );
+        }
 
         BrightbronzeHorizons.LOGGER.info(
-            "Spawned {} tier chunk at ({}, {}) biome {} (requested by {})",
+            "Spawned {} tier chunk at ({}, {}) biome {}{} (requested by {})",
             request.tier.getName(), request.targetChunk.x, request.targetChunk.z, biomeId,
+            request.structureTriggered ? " [structure-triggered]" : "",
             request.playerName != null ? request.playerName : "unknown"
         );
     }
@@ -319,7 +389,9 @@ public final class ChunkExpansionManager {
                                     ChunkPos targetChunk,
                                     ResourceLocation biomeId,
                                     @Nullable UUID playerId,
-                                    @Nullable String playerName) {
+                                    @Nullable String playerName,
+                                    boolean structureTriggered,
+                                    @Nullable ChunkPos triggeringChunk) {
     }
 
     public record EnqueueResult(boolean accepted, @Nullable Component failureMessage) {
@@ -335,10 +407,12 @@ public final class ChunkExpansionManager {
     private static final class ActiveJob {
         private final ExpansionRequest request;
         private final ChunkCopyService.ChunkCopyJob job;
+        private final ServerLevel sourceLevel;
 
-        private ActiveJob(ExpansionRequest request, ChunkCopyService.ChunkCopyJob job) {
+        private ActiveJob(ExpansionRequest request, ChunkCopyService.ChunkCopyJob job, ServerLevel sourceLevel) {
             this.request = request;
             this.job = job;
+            this.sourceLevel = sourceLevel;
         }
 
         /** @return true when complete (success or failure) */
@@ -350,12 +424,155 @@ public final class ChunkExpansionManager {
             }
 
             if (!result.success()) {
-                finishRequest(request, server, false, Component.translatable("message.brightbronze_horizons.spawner.copy_failed"), null);
+                finishRequest(request, server, false, Component.translatable("message.brightbronze_horizons.spawner.copy_failed"), null, ExpansionResult.failure());
                 return true;
             }
 
-            finishRequest(request, server, true, null, request.biomeId);
+            // Structure completion: only for non-structure-triggered chunks
+            ExpansionResult expansionResult = ExpansionResult.simpleSuccess();
+            if (!request.structureTriggered && BrightbronzeConfig.get().enableStructureCompletion) {
+                expansionResult = handleStructureCompletion(server);
+            }
+
+            finishRequest(request, server, true, null, request.biomeId, expansionResult);
             return true;
+        }
+
+        private ExpansionResult handleStructureCompletion(MinecraftServer server) {
+            PlayableAreaData playableData = PlayableAreaData.get(server);
+            Set<ChunkPos> alreadySpawned = new HashSet<>(playableData.getSpawnedChunks());
+            // Also consider chunks currently in flight
+            alreadySpawned.addAll(IN_FLIGHT_BY_CHUNK.values().stream()
+                    .map(req -> req.targetChunk)
+                    .toList());
+
+            StructureCompletionService.StructureCompletionResult structureResult =
+                    StructureCompletionService.collectStructureCompletionChunks(
+                            sourceLevel,
+                            request.targetChunk,
+                            alreadySpawned
+                    );
+
+            if (!structureResult.hasChunksToSpawn()) {
+                return ExpansionResult.simpleSuccess();
+            }
+
+            ServerLevel overworld = server.getLevel(Level.OVERWORLD);
+            if (overworld == null) {
+                return ExpansionResult.simpleSuccess();
+            }
+
+            // Announce that structure completion is starting
+            String structureNames = structureResult.formattedStructureNames();
+            server.getPlayerList().broadcastSystemMessage(
+                    Component.translatable(
+                            "message.brightbronze_horizons.spawner.structure_materializing",
+                            structureNames,
+                            structureResult.chunksToSpawn().size()
+                    ),
+                    false
+            );
+
+            // Get biome holder and replacement rules for synchronous copying
+            var biomeRegistry = overworld.registryAccess().lookupOrThrow(Registries.BIOME);
+            Optional<Holder.Reference<Biome>> biomeHolderOpt = biomeRegistry.get(request.biomeId);
+            if (biomeHolderOpt.isEmpty()) {
+                BrightbronzeHorizons.LOGGER.warn("Cannot complete structures: biome {} not found", request.biomeId);
+                return ExpansionResult.simpleSuccess();
+            }
+            Holder<Biome> biomeHolder = biomeHolderOpt.get();
+            List<BlockReplacementRule> replacementRules = BiomeRuleManager.getReplacementRules(overworld.registryAccess(), request.biomeId);
+
+            // Copy ALL structure chunks SYNCHRONOUSLY (not queued)
+            // This ensures they all appear at once rather than gradually
+            int copiedCount = 0;
+            int skippedCount = 0;
+            
+            for (ChunkPos structureChunk : structureResult.chunksToSpawn()) {
+                // Double-check: skip if already playable (race condition guard)
+                if (playableData.isChunkPlayable(structureChunk)) {
+                    skippedCount++;
+                    continue;
+                }
+
+                // Synchronous chunk copy
+                boolean success = ChunkCopyService.copyChunk(
+                        sourceLevel,
+                        structureChunk,
+                        overworld,
+                        structureChunk,
+                        biomeHolder,
+                        replacementRules
+                );
+
+                if (success) {
+                    // Register with playable area
+                    playableData.addChunk(structureChunk);
+                    playableData.recordSpawnedChunk(
+                            structureChunk,
+                            request.biomeId,
+                            request.tier.getName(),
+                            true, // structure-triggered
+                            request.targetChunk // triggering chunk
+                    );
+                    
+                    // Visual effects for each structure chunk
+                    spawnSuccessEffects(overworld, structureChunk);
+                    
+                    // Mob spawns for structure chunks too
+                    if (BrightbronzeConfig.get().enableChunkSpawnMobs) {
+                        ChunkSpawnMobEvent.fire(overworld, structureChunk, request.tier);
+                    }
+                    
+                    copiedCount++;
+                } else {
+                    skippedCount++;
+                    BrightbronzeHorizons.LOGGER.warn(
+                            "Failed to copy structure chunk ({}, {})",
+                            structureChunk.x, structureChunk.z
+                    );
+                }
+            }
+
+            // Add skipped chunks from structure detection (chunks that already existed)
+            skippedCount += structureResult.skippedExistingChunks();
+
+            BrightbronzeHorizons.LOGGER.info(
+                    "Structure completion from chunk {}: {} ({}) - {} chunks copied, {} skipped",
+                    request.targetChunk, structureResult.structureCount(), structureNames,
+                    copiedCount, skippedCount
+            );
+
+            // Announce structure completion
+            boolean isPartial = skippedCount > 0 || structureResult.hitStructureLimit() || structureResult.hitChunkLimit();
+            Component completionMessage;
+            if (isPartial) {
+                completionMessage = Component.translatable(
+                        "message.brightbronze_horizons.spawner.structure_partial",
+                        structureNames,
+                        request.targetChunk.x,
+                        request.targetChunk.z,
+                        copiedCount
+                );
+            } else {
+                completionMessage = Component.translatable(
+                        "message.brightbronze_horizons.spawner.structure_complete",
+                        structureNames,
+                        request.targetChunk.x,
+                        request.targetChunk.z
+                );
+            }
+            server.getPlayerList().broadcastSystemMessage(completionMessage, false);
+
+            return new ExpansionResult(
+                    true,
+                    structureResult.structureCount(),
+                    copiedCount,
+                    structureResult.hitStructureLimit(),
+                    structureResult.hitChunkLimit(),
+                    skippedCount,
+                    structureNames
+            );
         }
     }
 }

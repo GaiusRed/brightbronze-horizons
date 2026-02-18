@@ -22,12 +22,16 @@ import net.minecraft.world.level.storage.ServerLevelData;
 import red.gaius.brightbronze.BrightbronzeHorizons;
 import red.gaius.brightbronze.config.BrightbronzeConfig;
 import red.gaius.brightbronze.world.chunk.ChunkCopyService;
+import red.gaius.brightbronze.world.chunk.StructureCompletionService;
 import red.gaius.brightbronze.world.dimension.SourceDimensionManager;
 import red.gaius.brightbronze.world.rules.BiomeRuleManager;
+import red.gaius.brightbronze.world.rules.BlockReplacementRule;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * Manages the initial starting area setup for Brightbronze Horizons worlds.
@@ -154,6 +158,14 @@ public class StartingAreaManager {
                 );
                 allSuccess = false;
             }
+        }
+
+        // SC-4: Structure completion for starting area
+        // After copying the initial 3×3, check if any structures span additional chunks
+        if (BrightbronzeConfig.get().enableStructureCompletion) {
+            allSuccess = completeStructuresForStartingArea(
+                sourceLevel, overworld, startingChunks, playableData, startingBiomeHolder, replacementRules
+            ) && allSuccess;
         }
         
         // Force save the world to ensure chunk modifications are persisted
@@ -425,5 +437,87 @@ public class StartingAreaManager {
         }
         
         return true;
+    }
+
+    /**
+     * SC-4: Complete structures that span beyond the initial starting chunks.
+     * 
+     * <p>This is done synchronously during world init (not tick-bounded) to ensure
+     * structures are fully complete before the player spawns.
+     * 
+     * @param sourceLevel The source dimension to copy from
+     * @param overworld The overworld to copy into
+     * @param startingChunks The initial 3×3 chunks
+     * @param playableData The playable area data tracker
+     * @param biomeHolder The biome holder for chunk copying
+     * @param replacementRules Block replacement rules
+     * @return true if all structure chunks were copied successfully
+     */
+    private static boolean completeStructuresForStartingArea(
+            ServerLevel sourceLevel,
+            ServerLevel overworld,
+            List<ChunkPos> startingChunks,
+            PlayableAreaData playableData,
+            Holder<Biome> biomeHolder,
+            List<BlockReplacementRule> replacementRules) {
+        
+        Set<ChunkPos> alreadySpawned = new HashSet<>(startingChunks);
+        Set<ChunkPos> allStructureChunks = new HashSet<>();
+        int totalStructures = 0;
+
+        // Collect all structure-completion chunks from all starting chunks
+        for (ChunkPos chunk : startingChunks) {
+            StructureCompletionService.StructureCompletionResult result =
+                    StructureCompletionService.collectStructureCompletionChunks(sourceLevel, chunk, alreadySpawned);
+            
+            allStructureChunks.addAll(result.chunksToSpawn());
+            totalStructures += result.structureCount();
+            
+            // Add newly discovered chunks to alreadySpawned so cascading works properly
+            alreadySpawned.addAll(result.chunksToSpawn());
+        }
+
+        if (allStructureChunks.isEmpty()) {
+            BrightbronzeHorizons.LOGGER.info("No structure completion needed for starting area");
+            return true;
+        }
+
+        BrightbronzeHorizons.LOGGER.info(
+            "Structure completion for starting area: {} structures span {} additional chunks",
+            totalStructures, allStructureChunks.size()
+        );
+
+        // Copy all structure-completion chunks synchronously
+        boolean allSuccess = true;
+        int copied = 0;
+        
+        for (ChunkPos chunkPos : allStructureChunks) {
+            boolean success = ChunkCopyService.copyChunk(
+                sourceLevel,
+                chunkPos,
+                overworld,
+                chunkPos,
+                biomeHolder,
+                replacementRules
+            );
+
+            if (success) {
+                playableData.addChunk(chunkPos);
+                copied++;
+            } else {
+                BrightbronzeHorizons.LOGGER.warn(
+                    "Failed to copy structure-completion chunk ({}, {})",
+                    chunkPos.x, chunkPos.z
+                );
+                allSuccess = false;
+            }
+        }
+
+        BrightbronzeHorizons.LOGGER.info(
+            "Structure completion for starting area: {}/{} chunks copied",
+            copied, allStructureChunks.size()
+        );
+
+        return allSuccess;
     }
 }

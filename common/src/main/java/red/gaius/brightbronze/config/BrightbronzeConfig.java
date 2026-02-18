@@ -14,8 +14,12 @@ import java.io.Writer;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Runtime (server/world) config.
@@ -117,6 +121,21 @@ public final class BrightbronzeConfig {
         /** Phase 11: max number of source dimensions to create (0 = unlimited). */
         public int maxSourceDimensions = 0;
 
+        /** If true, spawning a chunk completes any structures that extend beyond that chunk. */
+        public boolean enableStructureCompletion = true;
+
+        /** Maximum number of structures that can be completed from a single trigger (cascade limit). */
+        public int maxStructureCompletionStructures = 16;
+
+        /** Hard cap on total chunks spawned for structure completion from a single trigger. */
+        public int maxStructureCompletionChunks = 256;
+
+        /** Maximum cascade depth for structure completion (0 = trigger chunk only, 5 = up to 5 hops). */
+        public int maxStructureCascadeDepth = 5;
+
+        /** Structure types to exclude from completion (e.g., "minecraft:mineshaft"). */
+        public List<String> structureCompletionBlacklist = new ArrayList<>();
+
         /** Per-tier enable/disable. Keys are tier enum names (e.g. "COPPER"). */
         public Map<String, Boolean> tiersEnabled = new HashMap<>();
 
@@ -131,6 +150,9 @@ public final class BrightbronzeConfig {
             for (ChunkSpawnerTier tier : ChunkSpawnerTier.values()) {
                 data.tiersEnabled.put(tier.name(), true);
             }
+            // Default blacklist: mineshafts are too sprawling and cascade badly
+            data.structureCompletionBlacklist.add("minecraft:mineshaft");
+            data.structureCompletionBlacklist.add("minecraft:mineshaft_mesa");
             return data;
         }
 
@@ -152,6 +174,37 @@ public final class BrightbronzeConfig {
             if (maxSourceDimensions < 0) {
                 maxSourceDimensions = 0;
             }
+
+            if (maxStructureCompletionStructures <= 0) {
+                maxStructureCompletionStructures = 16;
+            }
+
+            if (maxStructureCompletionChunks <= 0) {
+                maxStructureCompletionChunks = 256;
+            }
+
+            if (maxStructureCascadeDepth < 0) {
+                maxStructureCascadeDepth = 5;
+            }
+
+            if (structureCompletionBlacklist == null) {
+                structureCompletionBlacklist = new ArrayList<>();
+            }
+        }
+
+        /**
+         * Returns the blacklist as a Set of ResourceLocations for efficient lookup.
+         */
+        public Set<ResourceLocation> getStructureCompletionBlacklistSet() {
+            Set<ResourceLocation> set = new HashSet<>();
+            for (String s : structureCompletionBlacklist) {
+                try {
+                    set.add(ResourceLocation.parse(s));
+                } catch (Exception e) {
+                    BrightbronzeHorizons.LOGGER.warn("Invalid structure ID in blacklist: {}", s);
+                }
+            }
+            return set;
         }
 
         public ResourceLocation getTierBlockOverride(ChunkSpawnerTier tier) {
