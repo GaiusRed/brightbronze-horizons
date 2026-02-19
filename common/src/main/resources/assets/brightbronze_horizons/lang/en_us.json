@@ -1,8 +1,8 @@
 {
   "itemGroup.brightbronze_horizons.main": "Brightbronze Horizons",
-  
+
   "generator.brightbronze_horizons.brightbronze": "Brightbronze Horizons",
-  
+
   "block.brightbronze_horizons.brightbronze_block": "Block of Brightbronze",
   "block.brightbronze_horizons.coal_chunk_spawner": "Local Horizon Anchor",
   "block.brightbronze_horizons.copper_chunk_spawner": "Overworld Horizon Anchor",
@@ -10,29 +10,30 @@
   "block.brightbronze_horizons.gold_chunk_spawner": "Infernal Horizon Anchor",
   "block.brightbronze_horizons.emerald_chunk_spawner": "Altered Horizon Anchor",
   "block.brightbronze_horizons.diamond_chunk_spawner": "Astral Horizon Anchor",
-  
+
   "item.brightbronze_horizons.brightbronze_amalgam": "Brightbronze Amalgam",
   "item.brightbronze_horizons.brightbronze_ingot": "Brightbronze Ingot",
   "item.brightbronze_horizons.brightbronze_nugget": "Brightbronze Nugget",
 
+  "item.brightbronze_horizons.brightbronze_block": "Block of Brightbronze",
   "item.brightbronze_horizons.coal_chunk_spawner": "Local Horizon Anchor",
   "item.brightbronze_horizons.copper_chunk_spawner": "Overworld Horizon Anchor",
   "item.brightbronze_horizons.iron_chunk_spawner": "Tidal Horizon Anchor",
   "item.brightbronze_horizons.gold_chunk_spawner": "Infernal Horizon Anchor",
   "item.brightbronze_horizons.emerald_chunk_spawner": "Altered Horizon Anchor",
   "item.brightbronze_horizons.diamond_chunk_spawner": "Astral Horizon Anchor",
-  
+
   "item.brightbronze_horizons.brightbronze_sword": "Brightbronze Sword",
   "item.brightbronze_horizons.brightbronze_pickaxe": "Brightbronze Pickaxe",
   "item.brightbronze_horizons.brightbronze_axe": "Brightbronze Axe",
   "item.brightbronze_horizons.brightbronze_shovel": "Brightbronze Shovel",
   "item.brightbronze_horizons.brightbronze_hoe": "Brightbronze Hoe",
-  
+
   "item.brightbronze_horizons.brightbronze_helmet": "Brightbronze Helmet",
   "item.brightbronze_horizons.brightbronze_chestplate": "Brightbronze Chestplate",
   "item.brightbronze_horizons.brightbronze_leggings": "Brightbronze Leggings",
   "item.brightbronze_horizons.brightbronze_boots": "Brightbronze Boots",
-  
+
   "message.brightbronze_horizons.spawner.not_at_edge": "Place the Chunk Spawner on the edge of a chunk.",
   "message.brightbronze_horizons.spawner.success": "Spawned %s tier chunk at (%d, %d) - %s",
   "message.brightbronze_horizons.spawner.announce": "%s spawned a %s tier chunk at (%d, %d) - %s",
