@@ -7,13 +7,11 @@ I remember the impact—then nothing. No sky I recognize, no horizon that behave
 
 I learned why the first time I tried to leave.
 
-A few steps past the village boundary, the realm *fails to agree that I exist*.
-My body unthreads. My senses scatter. I discorporate—
-and below me is an infinite, patient void.
+A few steps past the village boundary, the realm *fails to agree that I exist*. My body unthreads. My senses scatter. I discorporate.. and below me is an infinite, patient void.
 
 But I’m not helpless.
 
-I know an alloy, an old explorer’s trick for anchoring unstable places. A bright metal that hums when reality is thin: Brightbronze. If I can make it here, I can do what I was trained to do: Stabilize the frontier. Expand the map. Turn “nowhere into “somewhere.”
+I know an alloy, an old explorer’s trick for anchoring unstable places. A bright metal that hums when reality is thin: Brightbronze. If I can make it here, I can do what I was trained to do: Stabilize the frontier. Expand the map. Turn "nowhere" into "somewhere".
 
 
 ## Gameplay
@@ -31,7 +29,7 @@ The rhythm of survival is simple and deliberate:
    Combine familiar metals into something meant for the unreal—then refine it into ingots and nuggets for crafting.
 
 3. **Craft a Horizon Anchor**  
-   Each anchor is a tuned stabilizer. Its “catalyst" determines what kind of land it can call forth.
+   Each anchor is a tuned stabilizer. Its "catalyst" determines what kind of land it can call forth.
 
 4. **Place the Anchor at the frontier**  
    Put it on the **edge of the current generated area** to extend the world by **one new chunk**, pushing the boundary outward.
