@@ -1,36 +1,29 @@
 package red.gaius.brightbronze.registry;
 
 import dev.architectury.registry.registries.RegistrySupplier;
-import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.item.CreativeModeTabs;
 import net.minecraft.world.item.Item;
-import net.minecraft.world.item.equipment.ArmorMaterial;
-import net.minecraft.world.item.equipment.ArmorType;
-import net.minecraft.world.item.equipment.EquipmentAsset;
-import net.minecraft.world.item.equipment.EquipmentAssets;
 import red.gaius.brightbronze.BrightbronzeHorizons;
+import red.gaius.brightbronze.versioned.ArmorFactory.ArmorSlot;
+import red.gaius.brightbronze.versioned.Versioned;
 
 import java.util.Map;
 
 /**
  * Registry for armor materials and armor items.
  * 
- * In MC 1.21.10+, armor is created via Item.Properties#humanoidArmor() method
- * instead of the old ArmorItem class.
- * 
- * Items require their ID to be set on the properties BEFORE construction
- * via Item.Properties.setId(ResourceKey).
+ * <p>Uses the version abstraction layer to handle differences between MC versions.
+ * In MC 1.21.10+, armor is created via Item.Properties#humanoidArmor() method.
+ * In MC 1.21.1, armor is created via ArmorItem class.
  */
 public final class ModArmorMaterials {
 
     // ===== Helper method to create ResourceKey =====
     
     private static ResourceKey<Item> key(String name) {
-        return ResourceKey.create(Registries.ITEM, 
-                ResourceLocation.fromNamespaceAndPath(BrightbronzeHorizons.MOD_ID, name));
+        return Versioned.items().key(BrightbronzeHorizons.MOD_ID, name);
     }
 
     /**
@@ -40,76 +33,82 @@ public final class ModArmorMaterials {
     public static final int BASE_DURABILITY = 24;
 
     /**
-     * Equipment asset key for armor rendering.
-     * This determines which texture files are used for the armor model.
+     * Armor material handle - the actual type is version-specific.
+     * Lazily initialized to ensure Versioned is ready.
      */
-    public static final ResourceKey<EquipmentAsset> BRIGHTBRONZE_EQUIPMENT_ASSET = ResourceKey.create(
-            EquipmentAssets.ROOT_ID,
-            ResourceLocation.fromNamespaceAndPath(BrightbronzeHorizons.MOD_ID, "brightbronze"));
+    private static Object armorMaterial;
 
     /**
-     * Brightbronze armor material - positioned between Iron and Diamond.
-     * Defense values: Boots=2, Leggings=5, Chestplate=7, Helmet=2 (Iron: 2,5,6,2; Diamond: 3,6,8,3)
-     * Enchantability: 18 (Iron: 9, Diamond: 10)
-     * Toughness: 1.0f (Iron: 0, Diamond: 2.0f)
-     * Knockback Resistance: 0 (same as Iron/Diamond)
+     * Returns the Brightbronze armor material.
+     * Positioned between Iron and Diamond:
+     * <ul>
+     *   <li>Defense values: Boots=2, Leggings=5, Chestplate=7, Helmet=2 (Iron: 2,5,6,2; Diamond: 3,6,8,3)</li>
+     *   <li>Enchantability: 18 (Iron: 9, Diamond: 10)</li>
+     *   <li>Toughness: 1.0f (Iron: 0, Diamond: 2.0f)</li>
+     *   <li>Knockback Resistance: 0 (same as Iron/Diamond)</li>
+     * </ul>
      */
-    public static final ArmorMaterial BRIGHTBRONZE = new ArmorMaterial(
-            BASE_DURABILITY,
-            Map.of(
-                    ArmorType.HELMET, 2,
-                    ArmorType.CHESTPLATE, 7,
-                    ArmorType.LEGGINGS, 5,
-                    ArmorType.BOOTS, 2
-            ),
-            18, // enchantability
-            SoundEvents.ARMOR_EQUIP_IRON,
-            1.0f, // toughness
-            0.0f, // knockback resistance
-            ModTags.Items.REPAIRS_BRIGHTBRONZE_ARMOR, // repair items tag
-            BRIGHTBRONZE_EQUIPMENT_ASSET
-    );
+    public static Object getArmorMaterial() {
+        if (armorMaterial == null) {
+            armorMaterial = Versioned.armor().createArmorMaterial(
+                    BrightbronzeHorizons.MOD_ID,
+                    "brightbronze",
+                    BASE_DURABILITY,
+                    Map.of(
+                            ArmorSlot.HELMET, 2,
+                            ArmorSlot.CHESTPLATE, 7,
+                            ArmorSlot.LEGGINGS, 5,
+                            ArmorSlot.BOOTS, 2
+                    ),
+                    18, // enchantability
+                    SoundEvents.ARMOR_EQUIP_IRON,
+                    1.0f, // toughness
+                    0.0f, // knockback resistance
+                    ModTags.Items.REPAIRS_BRIGHTBRONZE_ARMOR
+            );
+        }
+        return armorMaterial;
+    }
 
     // ===== Brightbronze Armor Items =====
-    // In 1.21.10+, armor items are created with Item::new and humanoidArmor() property
 
     public static final RegistrySupplier<Item> BRIGHTBRONZE_HELMET = ModItems.ITEMS.register(
             "brightbronze_helmet",
-            () -> new Item(new Item.Properties()
-                    .setId(key("brightbronze_helmet"))
-                    .arch$tab(CreativeModeTabs.COMBAT)
-                    .humanoidArmor(BRIGHTBRONZE, ArmorType.HELMET)
-                    .durability(ArmorType.HELMET.getDurability(BASE_DURABILITY))));
+            () -> Versioned.armor().createHelmet(
+                    key("brightbronze_helmet"),
+                    getArmorMaterial(),
+                    BASE_DURABILITY,
+                    CreativeModeTabs.COMBAT));
 
     public static final RegistrySupplier<Item> BRIGHTBRONZE_CHESTPLATE = ModItems.ITEMS.register(
             "brightbronze_chestplate",
-            () -> new Item(new Item.Properties()
-                    .setId(key("brightbronze_chestplate"))
-                    .arch$tab(CreativeModeTabs.COMBAT)
-                    .humanoidArmor(BRIGHTBRONZE, ArmorType.CHESTPLATE)
-                    .durability(ArmorType.CHESTPLATE.getDurability(BASE_DURABILITY))));
+            () -> Versioned.armor().createChestplate(
+                    key("brightbronze_chestplate"),
+                    getArmorMaterial(),
+                    BASE_DURABILITY,
+                    CreativeModeTabs.COMBAT));
 
     public static final RegistrySupplier<Item> BRIGHTBRONZE_LEGGINGS = ModItems.ITEMS.register(
             "brightbronze_leggings",
-            () -> new Item(new Item.Properties()
-                    .setId(key("brightbronze_leggings"))
-                    .arch$tab(CreativeModeTabs.COMBAT)
-                    .humanoidArmor(BRIGHTBRONZE, ArmorType.LEGGINGS)
-                    .durability(ArmorType.LEGGINGS.getDurability(BASE_DURABILITY))));
+            () -> Versioned.armor().createLeggings(
+                    key("brightbronze_leggings"),
+                    getArmorMaterial(),
+                    BASE_DURABILITY,
+                    CreativeModeTabs.COMBAT));
 
     public static final RegistrySupplier<Item> BRIGHTBRONZE_BOOTS = ModItems.ITEMS.register(
             "brightbronze_boots",
-            () -> new Item(new Item.Properties()
-                    .setId(key("brightbronze_boots"))
-                    .arch$tab(CreativeModeTabs.COMBAT)
-                    .humanoidArmor(BRIGHTBRONZE, ArmorType.BOOTS)
-                    .durability(ArmorType.BOOTS.getDurability(BASE_DURABILITY))));
+            () -> Versioned.armor().createBoots(
+                    key("brightbronze_boots"),
+                    getArmorMaterial(),
+                    BASE_DURABILITY,
+                    CreativeModeTabs.COMBAT));
 
     private ModArmorMaterials() {
     }
 
     public static void register() {
-        // ArmorMaterial is no longer registry-based in 1.21.10, it's created directly
+        // ArmorMaterial handling is version-specific
         // The armor items are registered via ModItems.ITEMS
         BrightbronzeHorizons.LOGGER.debug("Initialized mod armor materials");
     }

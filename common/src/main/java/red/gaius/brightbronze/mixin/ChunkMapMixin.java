@@ -9,6 +9,7 @@ import org.jetbrains.annotations.Nullable;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
+import red.gaius.brightbronze.versioned.Versioned;
 import red.gaius.brightbronze.world.chunk.ControllableChunkMap;
 
 import java.util.List;
@@ -20,8 +21,7 @@ import java.util.List;
  * tracking players after their contents have been modified. Without this,
  * clients may see stale chunk data (empty void instead of copied terrain).
  * 
- * <p>MC 1.21.10 uses a new batched chunk sending system via PlayerChunkSender,
- * replacing the old updateChunkTracking approach.
+ * <p>Uses the version abstraction layer to handle differences between MC versions.
  */
 @Mixin(ChunkMap.class)
 public abstract class ChunkMapMixin implements ControllableChunkMap {
@@ -46,9 +46,8 @@ public abstract class ChunkMapMixin implements ControllableChunkMap {
     /**
      * Forces the chunk to be resent to all players currently tracking it.
      * 
-     * <p>Uses MC 1.21.10's PlayerChunkSender API to queue the chunk for resending.
-     * This is more efficient than the old immediate-send approach as it batches
-     * chunk sends and handles rate limiting automatically.
+     * <p>Uses the version abstraction layer to handle differences between MC versions.
+     * MC 1.21.10 uses PlayerChunkSender API, while 1.21.1 uses a different approach.
      */
     @Override
     public void brightbronze$forceResyncChunk(ChunkPos chunkPos) {
@@ -57,8 +56,8 @@ public abstract class ChunkMapMixin implements ControllableChunkMap {
         if (levelChunk != null) {
             // For each player tracking this chunk, mark it pending to send
             for (ServerPlayer player : this.getPlayers(chunkPos, false)) {
-                // Use the new PlayerChunkSender API in MC 1.21.10
-                player.connection.chunkSender.markChunkPendingToSend(levelChunk);
+                // Use the version-specific chunk sync helper
+                Versioned.chunkSync().markChunkForResend(player, levelChunk);
             }
         }
     }

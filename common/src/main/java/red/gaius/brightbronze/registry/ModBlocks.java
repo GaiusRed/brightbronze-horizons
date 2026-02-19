@@ -4,19 +4,20 @@ import dev.architectury.registry.registries.DeferredRegister;
 import dev.architectury.registry.registries.RegistrySupplier;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import red.gaius.brightbronze.BrightbronzeHorizons;
 import red.gaius.brightbronze.block.ChunkSpawnerBlock;
+import red.gaius.brightbronze.versioned.Versioned;
 import red.gaius.brightbronze.world.ChunkSpawnerTier;
 
 /**
  * Registry for all mod blocks.
  * 
+ * <p>Uses the version abstraction layer to handle differences between MC versions.
  * In MC 1.21.10+, blocks require their ID to be set on the properties BEFORE construction.
- * This is done via BlockBehaviour.Properties.setId(ResourceKey).
+ * In MC 1.21.1, this is not required.
  */
 public final class ModBlocks {
     public static final DeferredRegister<Block> BLOCKS = DeferredRegister.create(
@@ -25,19 +26,14 @@ public final class ModBlocks {
     // ===== Helper to create ResourceKey =====
     
     private static ResourceKey<Block> key(String name) {
-        return ResourceKey.create(Registries.BLOCK, 
-                ResourceLocation.fromNamespaceAndPath(BrightbronzeHorizons.MOD_ID, name));
+        return Versioned.blocks().key(BrightbronzeHorizons.MOD_ID, name);
     }
 
     // ===== Brightbronze Material =====
-
-    private static final ResourceLocation BRIGHTBRONZE_BLOCK_ID = 
-            ResourceLocation.fromNamespaceAndPath(BrightbronzeHorizons.MOD_ID, "brightbronze_block");
     
     public static final RegistrySupplier<Block> BRIGHTBRONZE_BLOCK = BLOCKS.register(
-            BRIGHTBRONZE_BLOCK_ID,
-            () -> new Block(BlockBehaviour.Properties.of()
-                    .setId(ResourceKey.create(Registries.BLOCK, BRIGHTBRONZE_BLOCK_ID))
+            "brightbronze_block",
+            () -> new Block(Versioned.blocks().properties(key("brightbronze_block"))
                     .strength(5.0f, 6.0f)
                     .requiresCorrectToolForDrops()
                     .sound(SoundType.METAL)
@@ -50,11 +46,10 @@ public final class ModBlocks {
      * All spawners share the same physical properties.
      */
     private static BlockBehaviour.Properties spawnerProperties(String name) {
-        return BlockBehaviour.Properties.of()
-                .setId(key(name))
-                                // PRD: spawners should be easy to break (netherrack-like), and
-                                // activation consumes the block and should always drop via loot table.
-                                .strength(0.4f, 0.4f)
+        return Versioned.blocks().properties(key(name))
+                // PRD: spawners should be easy to break (netherrack-like), and
+                // activation consumes the block and should always drop via loot table.
+                .strength(0.4f, 0.4f)
                 .sound(SoundType.METAL)
                 .lightLevel(state -> 8); // Half as bright as glowstone/brightbronze block
     }
