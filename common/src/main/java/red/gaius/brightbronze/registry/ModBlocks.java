@@ -40,7 +40,8 @@ public final class ModBlocks {
                     .setId(ResourceKey.create(Registries.BLOCK, BRIGHTBRONZE_BLOCK_ID))
                     .strength(5.0f, 6.0f)
                     .requiresCorrectToolForDrops()
-                    .sound(SoundType.METAL)));
+                    .sound(SoundType.METAL)
+                    .lightLevel(state -> 15))); // Bright glow like glowstone
 
     // ===== Chunk Spawners =====
     
@@ -55,7 +56,7 @@ public final class ModBlocks {
                                 // activation consumes the block and should always drop via loot table.
                                 .strength(0.4f, 0.4f)
                 .sound(SoundType.METAL)
-                .lightLevel(state -> 7); // Slight glow to indicate magical nature
+                .lightLevel(state -> 8); // Half as bright as glowstone/brightbronze block
     }
 
     public static final RegistrySupplier<Block> COAL_CHUNK_SPAWNER = BLOCKS.register(

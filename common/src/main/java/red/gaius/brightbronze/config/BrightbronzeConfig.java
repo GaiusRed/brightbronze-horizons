@@ -125,13 +125,13 @@ public final class BrightbronzeConfig {
         public boolean enableStructureCompletion = true;
 
         /** Maximum number of structures that can be completed from a single trigger (cascade limit). */
-        public int maxStructureCompletionStructures = 16;
+        public int maxStructureCompletionStructures = 8;
 
         /** Hard cap on total chunks spawned for structure completion from a single trigger. */
-        public int maxStructureCompletionChunks = 256;
+        public int maxStructureCompletionChunks = 32;
 
-        /** Maximum cascade depth for structure completion (0 = trigger chunk only, 5 = up to 5 hops). */
-        public int maxStructureCascadeDepth = 5;
+        /** Maximum cascade depth for structure completion (0 = trigger chunk only, 1 = up to 1 hop). */
+        public int maxStructureCascadeDepth = 1;
 
         /** Structure types to exclude from completion (e.g., "minecraft:mineshaft"). */
         public List<String> structureCompletionBlacklist = new ArrayList<>();
@@ -176,15 +176,15 @@ public final class BrightbronzeConfig {
             }
 
             if (maxStructureCompletionStructures <= 0) {
-                maxStructureCompletionStructures = 16;
+                maxStructureCompletionStructures = 8;
             }
 
             if (maxStructureCompletionChunks <= 0) {
-                maxStructureCompletionChunks = 256;
+                maxStructureCompletionChunks = 32;
             }
 
             if (maxStructureCascadeDepth < 0) {
-                maxStructureCascadeDepth = 5;
+                maxStructureCascadeDepth = 1;
             }
 
             if (structureCompletionBlacklist == null) {

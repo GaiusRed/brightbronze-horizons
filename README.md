@@ -1,6 +1,7 @@
-# Brightbronze Horizons
-Stabilize the edge of reality. Stitch a world into the void.
+<img src="brightbronze_horizons.png" width=50 height=50 />
 
+# Brightbronze Horizons
+A Fabric & NeoForge Mod for Minecraft 1.21
 
 ## Field Log: Arrival
 
@@ -8,44 +9,41 @@ I remember the impact—then nothing. No sky I recognize, no horizon that behave
 
 I learned why the first time I tried to leave.
 
-A few steps past the village boundary, the realm *fails to agree that I exist*.
-My body unthreads. My senses scatter. I discorporate—
-and below me is an infinite, patient void.
+A few steps past the village boundary, the realm *fails to agree that I exist*. My body unthreads. My senses scatter. I discorporate.. and below me is an infinite, patient void.
 
 But I’m not helpless.
 
-I know an alloy — an old explorer’s trick for anchoring unstable places. A bright metal that hums when reality is thin: Brightbronze. If I can make it here, I can do what I was trained to do: Stabilize the frontier. Expand the map. Turn “nothing” into “somewhere.”
+I know an alloy, an old explorer’s trick for anchoring unstable places. A bright metal that hums when reality is thin: Brightbronze. If I can make it here, I can do what I was trained to do: Stabilize the frontier. Expand the map. Turn "nowhere" into "somewhere".
 
 
-## Gameplay Loop
+## Gameplay
 
-**Brightbronze Horizons** drops you into a fragile realm: you always begin in a **3×3 chunk plains village**, surrounded by the **void**. The village is safe. The edge is not.
+**Brightbronze Horizons** drops you into a fragile realm: you always begin in a **plains village**, surrounded by the **void**. The village is safe. The edge is not.
 
 Your goal is to **craft Brightbronze** and use it to create **Horizon Anchors**—special blocks that **stabilize the realm** and **spawn new chunks** when placed on the **edge** of your current world.
 
 The rhythm of survival is simple and deliberate:
 
-1. **Scavenge and build within the village**
+1. **Scavenge and build within the village**  
    Gather resources, set up a base, and prepare for long-term expansion.
 
-2. **Forge Brightbronze**
+2. **Forge Brightbronze**  
    Combine familiar metals into something meant for the unreal—then refine it into ingots and nuggets for crafting.
 
-3. **Craft a Horizon Anchor**
-   Each anchor is a tuned stabilizer. Its “catalyst determines what kind of land it can call forth.
+3. **Craft a Horizon Anchor**  
+   Each anchor is a tuned stabilizer. Its "catalyst" determines what kind of land it can call forth.
 
-4. **Place the Anchor at the frontier**
+4. **Place the Anchor at the frontier**  
    Put it on the **edge of the current generated area** to extend the world by **one new chunk**, pushing the boundary outward.
 
-5. **Repeat: expand, explore, upgrade**
-   Start local. Reach the Overworld’s breadth. Push into stranger climates.
-   Eventually, you’ll stabilize pathways into realms that should not be adjacent to a village at all.
+5. **Repeat: expand, explore, upgrade**  
+   Start local. Reach the Overworld’s breadth. Push into stranger climates. Eventually, you’ll stabilize pathways into realms that should not be adjacent to a village at all.
 
 ## Recipes
 
 ### Brightbronze Progression
 
-- `1× Copper Ingot + 2× Iron Ingot + 1× Gold Ingot` → `1× Brightbronze Amalgam`
+- `1× Copper Ingot + 2× Iron Nugget + 1× Gold Nugget` → `1× Brightbronze Amalgam`
 - Smelt: `1× Brightbronze Amalgam` → `1× Brightbronze Ingot`
 - `1× Brightbronze Ingot` → `9× Brightbronze Nugget`
 
@@ -86,4 +84,4 @@ __Astral Horizon Anchor__
 
 ---
 
-*When the ground ends, Brightbronze begins.*
+*Stabilize the edge of reality. Stitch a world into the void.*
