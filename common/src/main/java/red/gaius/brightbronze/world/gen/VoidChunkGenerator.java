@@ -18,7 +18,6 @@ import net.minecraft.world.level.chunk.ChunkGenerator;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.RandomState;
 import net.minecraft.world.level.levelgen.blending.Blender;
-import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplateManager;
 
 import java.util.List;
 import java.util.concurrent.CompletableFuture;

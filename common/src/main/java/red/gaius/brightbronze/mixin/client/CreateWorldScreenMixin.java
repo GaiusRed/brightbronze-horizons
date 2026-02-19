@@ -10,6 +10,7 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.ModifyArg;
 import red.gaius.brightbronze.BrightbronzeHorizons;
+import red.gaius.brightbronze.world.BrightbronzeWorldMarker;
 
 /**
  * Mixin to make the Brightbronze Horizons world preset the default selection
@@ -38,7 +39,9 @@ public class CreateWorldScreenMixin {
         index = 4
     )
     private static ResourceKey<WorldPreset> brightbronze$useCustomDefaultPreset(ResourceKey<WorldPreset> original) {
-        BrightbronzeHorizons.LOGGER.debug("Changing default world preset from {} to {}", original.location(), BRIGHTBRONZE_PRESET.location());
+        BrightbronzeHorizons.LOGGER.debug("Setting default world preset to Brightbronze");
+        // Mark that we're creating a Brightbronze world
+        BrightbronzeWorldMarker.markWorldCreation();
         return BRIGHTBRONZE_PRESET;
     }
 }

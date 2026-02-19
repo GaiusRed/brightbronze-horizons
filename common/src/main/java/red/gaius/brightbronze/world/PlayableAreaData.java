@@ -318,6 +318,18 @@ public class PlayableAreaData extends SavedData {
         recordSpawnedChunk(pos, biomeId, tierName, false, null);
     }
 
+    /**
+     * Gets the recorded biome for a spawned chunk.
+     * 
+     * @param pos The chunk position
+     * @return The biome ID that was used when spawning this chunk, or null if not found
+     */
+    @org.jetbrains.annotations.Nullable
+    public ResourceLocation getRecordedBiomeForChunk(ChunkPos pos) {
+        SpawnedChunkMeta meta = spawnedChunkMeta.get(chunkKey(pos));
+        return meta != null ? meta.biome() : null;
+    }
+
     public Set<ResourceLocation> getRecordedBiomeIds() {
         Set<ResourceLocation> out = new HashSet<>();
         for (SpawnedChunkMeta meta : spawnedChunkMeta.values()) {

@@ -49,6 +49,8 @@
   "message.brightbronze_horizons.spawner.structure_materializing": "Structure detected: %s. Materializing %d chunks...",
   "message.brightbronze_horizons.spawner.structure_complete": "%s has materialized at (%d, %d).",
   "message.brightbronze_horizons.spawner.structure_partial": "%s partially materialized at (%d, %d) - %d chunks spawned (some areas already explored or limit reached).",
+  "message.brightbronze_horizons.spawner.no_modded_biomes": "No modded biomes available. Install a worldgen mod to use the Altered Horizon Anchor.",
+  "message.brightbronze_horizons.spawner.modded_biome_removed": "The selected biome no longer exists. Has a worldgen mod been removed?",
 
   "advancement.brightbronze_horizons.first_chunk_spawn.title": "Horizons Unfold",
   "advancement.brightbronze_horizons.first_chunk_spawn.description": "Spawn your first new chunk"

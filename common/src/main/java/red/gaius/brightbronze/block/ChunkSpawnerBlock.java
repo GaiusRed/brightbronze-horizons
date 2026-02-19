@@ -21,6 +21,7 @@ import red.gaius.brightbronze.world.BiomePoolManager;
 import red.gaius.brightbronze.world.ChunkSpawnerTier;
 import red.gaius.brightbronze.world.PlayableAreaData;
 import red.gaius.brightbronze.world.chunk.ChunkExpansionManager;
+import red.gaius.brightbronze.world.compat.ModdedBiomeDetector;
 import red.gaius.brightbronze.world.rules.BiomeRuleManager;
 import red.gaius.brightbronze.world.rules.BiomeRuleManager.WeightedBiomePool;
 
@@ -37,10 +38,11 @@ import java.util.Optional;
  * 
  * <p>Each tier has different biome pools and mob spawning rules:
  * <ul>
- *   <li>Coal: Common Overworld biomes, mobs spawn at night only</li>
- *   <li>Iron: Rare Overworld biomes, mobs spawn at night only</li>
+ *   <li>Coal: Spawns the same biome as where the anchor is placed</li>
+ *   <li>Copper: Common safe Overworld biomes, mobs spawn at night only</li>
+ *   <li>Iron: Rare Overworld biomes (Jungle, Badlands, etc.), mobs spawn at night only</li>
  *   <li>Gold: Nether biomes, mobs always spawn</li>
- *   <li>Emerald: Modded biomes (empty by default), mobs always spawn</li>
+ *   <li>Emerald: Modded biomes (auto-detected from worldgen mods), mobs always spawn</li>
  *   <li>Diamond: End biomes, mobs always spawn</li>
  * </ul>
  * 
@@ -169,10 +171,29 @@ public class ChunkSpawnerBlock extends Block {
         ResourceLocation placedBiomeId = BiomePoolManager.getBiomeId(placedBiome);
 
         if (tier == ChunkSpawnerTier.COAL) {
-            if (placedBiomeId == null) {
+            // Coal tier: spawn terrain matching the biome where the spawner is placed.
+            // First try the level's biome lookup. If that returns plains (the void world default),
+            // fall back to the recorded biome from when the chunk was originally spawned.
+            ResourceLocation effectiveBiomeId = placedBiomeId;
+            
+            // Check if we got the void world default biome (plains) - if so, try to use recorded data
+            if (placedBiomeId != null && placedBiomeId.equals(ResourceLocation.withDefaultNamespace("plains"))) {
+                ChunkPos spawnerChunk = new ChunkPos(spawnerPos);
+                ResourceLocation recordedBiome = playableData.getRecordedBiomeForChunk(spawnerChunk);
+                if (recordedBiome != null) {
+                    effectiveBiomeId = recordedBiome;
+                }
+            }
+            
+            if (effectiveBiomeId == null) {
                 return SpawnAttemptResult.failure(Component.translatable("message.brightbronze_horizons.spawner.unknown_biome"));
             }
-            return SpawnAttemptResult.success(placedBiomeId);
+            return SpawnAttemptResult.success(effectiveBiomeId);
+        }
+
+        // EMERALD tier (Altered Horizon Anchor): Use modded biomes from worldgen mods
+        if (tier == ChunkSpawnerTier.EMERALD) {
+            return selectModdedBiomeForSpawn(level, playableData);
         }
 
         WeightedBiomePool pool = BiomeRuleManager.getWeightedPool(level.registryAccess(), tier);
@@ -200,6 +221,57 @@ public class ChunkSpawnerBlock extends Block {
         if (biomeId == null) {
             return SpawnAttemptResult.failure(Component.translatable("message.brightbronze_horizons.spawner.unknown_biome"));
         }
+        return SpawnAttemptResult.success(biomeId);
+    }
+
+    /**
+     * Selects a modded biome for the EMERALD tier (Altered Horizon Anchor).
+     * 
+     * <p>This method auto-detects biomes from worldgen mods (any namespace != "minecraft")
+     * and uses deterministic selection from the PlayableAreaData RNG.
+     * 
+     * @param level The server level
+     * @param playableData The playable area data for deterministic RNG
+     * @return Success with a modded biome, or failure if no modded biomes are available
+     */
+    private SpawnAttemptResult selectModdedBiomeForSpawn(ServerLevel level, PlayableAreaData playableData) {
+        // Check if any modded biomes are available
+        if (!ModdedBiomeDetector.hasModdedBiomes(level.registryAccess())) {
+            BrightbronzeHorizons.LOGGER.debug("Altered Horizon Anchor used but no modded biomes available");
+            return SpawnAttemptResult.failure(
+                Component.translatable("message.brightbronze_horizons.spawner.no_modded_biomes")
+            );
+        }
+
+        // Use deterministic selection from the playable area's RNG
+        int biomeCount = ModdedBiomeDetector.getModdedBiomeCount(level.registryAccess());
+        int roll = playableData.nextDeterministicInt(level.getServer(), biomeCount);
+        
+        Optional<Holder.Reference<Biome>> selectedOpt = ModdedBiomeDetector.selectModdedBiome(
+            level.registryAccess(), roll
+        );
+        
+        if (selectedOpt.isEmpty()) {
+            // Should not happen if hasModdedBiomes() returned true, but handle gracefully
+            return SpawnAttemptResult.failure(
+                Component.translatable("message.brightbronze_horizons.spawner.no_modded_biomes")
+            );
+        }
+
+        Holder.Reference<Biome> selected = selectedOpt.get();
+        ResourceLocation biomeId = ModdedBiomeDetector.getBiomeId(selected);
+        
+        if (biomeId == null) {
+            return SpawnAttemptResult.failure(
+                Component.translatable("message.brightbronze_horizons.spawner.unknown_biome")
+            );
+        }
+
+        BrightbronzeHorizons.LOGGER.debug(
+            "Altered Horizon Anchor selected modded biome: {} (roll {}/{})",
+            biomeId, roll, biomeCount
+        );
+        
         return SpawnAttemptResult.success(biomeId);
     }
 
