@@ -6,7 +6,6 @@ import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.BlockTags;
-import net.minecraft.tags.ItemTags;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.CreativeModeTabs;
 import net.minecraft.world.item.Item;
@@ -65,18 +64,18 @@ public final class ModItems {
 
     /**
      * Brightbronze tool material - positioned between Iron and Diamond.
-     * Durability: 350 (Iron: 250, Diamond: 1561)
-     * Speed: 6.5f (Iron: 6.0f, Diamond: 8.0f)
+     * Durability: 905 (Iron: 250, Diamond: 1561)
+     * Speed: 7.0f (Iron: 6.0f, Diamond: 8.0f)
      * Attack Damage Bonus: 2.5f (Iron: 2.0f, Diamond: 3.0f)
      * Enchantability: 18 (Iron: 14, Diamond: 10)
      */
     public static final ToolMaterial BRIGHTBRONZE_TOOL_MATERIAL = new ToolMaterial(
-            BlockTags.INCORRECT_FOR_IRON_TOOL,  // What this tier cannot mine
-            350,                                 // Durability
-            6.5f,                               // Mining speed
+            BlockTags.INCORRECT_FOR_IRON_TOOL,  // What this tier cannot mine (same as iron)
+            905,                                 // Durability
+            7.0f,                               // Mining speed
             2.5f,                               // Attack damage bonus
             18,                                 // Enchantability
-            ItemTags.IRON_TOOL_MATERIALS        // Repair items tag
+            ModTags.Items.BRIGHTBRONZE_TOOL_MATERIALS  // Repair items tag
     );
 
     // ===== Brightbronze Tools (1.21.10+ API using Item.Properties) =====

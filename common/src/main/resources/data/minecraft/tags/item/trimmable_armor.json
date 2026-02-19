@@ -1,0 +1,9 @@
+{
+  "replace": false,
+  "values": [
+    "brightbronze_horizons:brightbronze_helmet",
+    "brightbronze_horizons:brightbronze_chestplate",
+    "brightbronze_horizons:brightbronze_leggings",
+    "brightbronze_horizons:brightbronze_boots"
+  ]
+}

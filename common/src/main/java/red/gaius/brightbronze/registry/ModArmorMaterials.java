@@ -5,7 +5,6 @@ import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvents;
-import net.minecraft.tags.ItemTags;
 import net.minecraft.world.item.CreativeModeTabs;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.equipment.ArmorMaterial;
@@ -38,7 +37,7 @@ public final class ModArmorMaterials {
      * Base durability multiplier for Brightbronze armor.
      * Positioned between Iron (15) and Diamond (33).
      */
-    public static final int BASE_DURABILITY = 18;
+    public static final int BASE_DURABILITY = 24;
 
     /**
      * Equipment asset key for armor rendering.
@@ -50,7 +49,7 @@ public final class ModArmorMaterials {
 
     /**
      * Brightbronze armor material - positioned between Iron and Diamond.
-     * Defense values: Boots=2, Leggings=5, Chestplate=6, Helmet=2 (Iron: 2,5,6,2; Diamond: 3,6,8,3)
+     * Defense values: Boots=2, Leggings=5, Chestplate=7, Helmet=2 (Iron: 2,5,6,2; Diamond: 3,6,8,3)
      * Enchantability: 18 (Iron: 9, Diamond: 10)
      * Toughness: 1.0f (Iron: 0, Diamond: 2.0f)
      * Knockback Resistance: 0 (same as Iron/Diamond)
@@ -59,7 +58,7 @@ public final class ModArmorMaterials {
             BASE_DURABILITY,
             Map.of(
                     ArmorType.HELMET, 2,
-                    ArmorType.CHESTPLATE, 6,
+                    ArmorType.CHESTPLATE, 7,
                     ArmorType.LEGGINGS, 5,
                     ArmorType.BOOTS, 2
             ),
@@ -67,7 +66,7 @@ public final class ModArmorMaterials {
             SoundEvents.ARMOR_EQUIP_IRON,
             1.0f, // toughness
             0.0f, // knockback resistance
-            ItemTags.REPAIRS_IRON_ARMOR, // repair items tag
+            ModTags.Items.REPAIRS_BRIGHTBRONZE_ARMOR, // repair items tag
             BRIGHTBRONZE_EQUIPMENT_ASSET
     );
 
