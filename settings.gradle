@@ -11,6 +11,12 @@ pluginManagement {
 
 rootProject.name = 'brightbronze_horizons'
 
+// Version-agnostic common module
 include 'common'
-include 'fabric'
-include 'neoforge'
+
+// Version-specific implementation modules
+include 'common-1.21.10'
+
+// Loader-specific modules for MC 1.21.10
+include 'fabric-1.21.10'
+include 'neoforge-1.21.10'

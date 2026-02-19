@@ -9,6 +9,8 @@ import red.gaius.brightbronze.BrightbronzeHorizons;
 import red.gaius.brightbronze.command.BbhAdminCommands;
 import red.gaius.brightbronze.command.BbhDebugCommands;
 import red.gaius.brightbronze.command.BbhDiskCommands;
+import red.gaius.brightbronze.versioned.Versioned;
+import red.gaius.brightbronze.versioned.mc12110.McVersion12110;
 import red.gaius.brightbronze.world.mob.MobSpawnTableReloadListener;
 import red.gaius.brightbronze.world.rules.BiomeRuleReloadListener;
 
@@ -18,6 +20,9 @@ import red.gaius.brightbronze.world.rules.BiomeRuleReloadListener;
 @Mod(BrightbronzeHorizons.MOD_ID)
 public final class BrightbronzeHorizonsNeoForge {
     public BrightbronzeHorizonsNeoForge() {
+        // Initialize version-specific implementation (MC 1.21.10)
+        Versioned.init(new McVersion12110());
+        
         // Run common setup
         BrightbronzeHorizons.init();
 
