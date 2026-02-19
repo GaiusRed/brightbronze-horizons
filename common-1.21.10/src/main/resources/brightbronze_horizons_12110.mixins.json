@@ -1,0 +1,12 @@
+{
+  "required": true,
+  "package": "red.gaius.brightbronze.mixin.mc12110",
+  "compatibilityLevel": "JAVA_21",
+  "minVersion": "0.8",
+  "client": [
+    "CreateWorldScreenMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

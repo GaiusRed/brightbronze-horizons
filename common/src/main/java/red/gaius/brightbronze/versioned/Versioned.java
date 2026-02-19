@@ -117,4 +117,60 @@ public final class Versioned {
     public static ChunkSyncHelper chunkSync() {
         return mc().chunkSync();
     }
+    
+    /**
+     * Returns the entity copy helper.
+     * Convenience method for {@code mc().entityCopy()}.
+     */
+    public static EntityCopyHelper entityCopy() {
+        return mc().entityCopy();
+    }
+    
+    /**
+     * Returns the mob spawn helper.
+     * Convenience method for {@code mc().mobSpawn()}.
+     */
+    public static MobSpawnHelper mobSpawn() {
+        return mc().mobSpawn();
+    }
+    
+    /**
+     * Returns the interaction result helper.
+     * Convenience method for {@code mc().interaction()}.
+     */
+    public static InteractionResultHelper interaction() {
+        return mc().interaction();
+    }
+    
+    /**
+     * Returns the registry helper.
+     * Convenience method for {@code mc().registry()}.
+     */
+    public static RegistryHelper registry() {
+        return mc().registry();
+    }
+    
+    /**
+     * Returns the saved data helper.
+     * Convenience method for {@code mc().savedData()}.
+     */
+    public static SavedDataHelper savedData() {
+        return mc().savedData();
+    }
+    
+    /**
+     * Returns the world generation helper.
+     * Convenience method for {@code mc().worldGen()}.
+     */
+    public static WorldGenHelper worldGen() {
+        return mc().worldGen();
+    }
+    
+    /**
+     * Returns the spawn helper.
+     * Convenience method for {@code mc().spawn()}.
+     */
+    public static SpawnHelper spawn() {
+        return mc().spawn();
+    }
 }

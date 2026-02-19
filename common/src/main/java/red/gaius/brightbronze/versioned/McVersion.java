@@ -53,4 +53,39 @@ public interface McVersion {
      * Returns the chunk sync helper for this Minecraft version.
      */
     ChunkSyncHelper chunkSync();
+    
+    /**
+     * Returns the entity copy helper for this Minecraft version.
+     */
+    EntityCopyHelper entityCopy();
+    
+    /**
+     * Returns the mob spawn helper for this Minecraft version.
+     */
+    MobSpawnHelper mobSpawn();
+    
+    /**
+     * Returns the interaction result helper for this Minecraft version.
+     */
+    InteractionResultHelper interaction();
+    
+    /**
+     * Returns the registry helper for this Minecraft version.
+     */
+    RegistryHelper registry();
+    
+    /**
+     * Returns the saved data helper for this Minecraft version.
+     */
+    SavedDataHelper savedData();
+    
+    /**
+     * Returns the world generation helper for this Minecraft version.
+     */
+    WorldGenHelper worldGen();
+    
+    /**
+     * Returns the spawn helper for this Minecraft version.
+     */
+    SpawnHelper spawn();
 }

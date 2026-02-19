@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "ABA",
+    "BCB",
+    "ABA"
+  ],
+  "key": {
+    "A": { "item": "brightbronze_horizons:brightbronze_ingot" },
+    "B": { "item": "brightbronze_horizons:brightbronze_nugget" },
+    "C": { "item": "minecraft:emerald_block" }
+  },
+  "result": {
+    "id": "brightbronze_horizons:emerald_chunk_spawner",
+    "count": 1
+  }
+}

@@ -4,13 +4,13 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.resources.Resource;
 import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.util.GsonHelper;
 import net.minecraft.world.entity.EntityType;
 import red.gaius.brightbronze.BrightbronzeHorizons;
+import red.gaius.brightbronze.versioned.Versioned;
 import red.gaius.brightbronze.world.ChunkSpawnerTier;
 
 import java.io.IOException;
@@ -122,13 +122,13 @@ public final class MobSpawnTableManager {
                     continue;
                 }
 
-                var typeRefOpt = BuiltInRegistries.ENTITY_TYPE.get(entityId);
-                if (typeRefOpt.isEmpty()) {
+                var typeOpt = Versioned.registry().getEntityType(entityId);
+                if (typeOpt.isEmpty()) {
                     BrightbronzeHorizons.LOGGER.warn("Unknown entity type '{}' in {}", entityId, id);
                     continue;
                 }
 
-                EntityType<?> type = typeRefOpt.get().value();
+                EntityType<?> type = typeOpt.get();
                 int min = GsonHelper.getAsInt(obj, "min", 0);
                 int max = GsonHelper.getAsInt(obj, "max", min);
 

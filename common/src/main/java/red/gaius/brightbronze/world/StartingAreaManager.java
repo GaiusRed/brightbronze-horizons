@@ -17,10 +17,9 @@ import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.biome.Biomes;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.structure.Structure;
-import net.minecraft.world.level.storage.LevelData;
-import net.minecraft.world.level.storage.ServerLevelData;
 import red.gaius.brightbronze.BrightbronzeHorizons;
 import red.gaius.brightbronze.config.BrightbronzeConfig;
+import red.gaius.brightbronze.versioned.Versioned;
 import red.gaius.brightbronze.world.chunk.ChunkCopyService;
 import red.gaius.brightbronze.world.chunk.StructureCompletionService;
 import red.gaius.brightbronze.world.dimension.SourceDimensionManager;
@@ -94,10 +93,11 @@ public class StartingAreaManager {
             return false;
         }
 
-        // Get the world spawn position from level data
-        // MC 1.21 uses RespawnData for spawn position
-        LevelData.RespawnData respawnData = overworld.getLevelData().getRespawnData();
-        BlockPos spawnPos = respawnData.pos();
+        // Get the world spawn position using version-specific API
+        BlockPos spawnPos = Versioned.spawn().getSpawnPosition(overworld);
+        if (spawnPos == null) {
+            spawnPos = overworld.getSharedSpawnPos();
+        }
         ChunkPos requestedCenterChunk = new ChunkPos(spawnPos);
         
         BrightbronzeHorizons.LOGGER.info(
@@ -367,18 +367,8 @@ public class StartingAreaManager {
         if (safeY > level.getMinY()) {
             BlockPos newSpawn = new BlockPos(centerX, safeY, centerZ);
             
-            // MC 1.21 uses RespawnData for spawn position
-            // Get current spawn angle from existing respawn data
-            LevelData.RespawnData currentRespawn = level.getLevelData().getRespawnData();
-            LevelData.RespawnData newRespawn = LevelData.RespawnData.of(
-                Level.OVERWORLD,
-                newSpawn,
-                currentRespawn.yaw(),
-                currentRespawn.pitch()
-            );
-            
-            ServerLevelData levelData = (ServerLevelData) level.getLevelData();
-            levelData.setSpawn(newRespawn);
+            // Use version-specific API to set spawn
+            Versioned.spawn().setSpawnPosition(level, newSpawn, 0.0f);
             
             BrightbronzeHorizons.LOGGER.info(
                 "Set spawn point to ({}, {}, {})",

@@ -15,6 +15,13 @@ public class McVersion12110 implements McVersion {
     private final ToolFactory toolFactory = new ToolFactoryImpl();
     private final ArmorFactory armorFactory = new ArmorFactoryImpl();
     private final ChunkSyncHelper chunkSyncHelper = new ChunkSyncHelperImpl();
+    private final EntityCopyHelper entityCopyHelper = new EntityCopyHelperImpl();
+    private final MobSpawnHelper mobSpawnHelper = new MobSpawnHelperImpl();
+    private final InteractionResultHelper interactionResultHelper = new InteractionResultHelperImpl();
+    private final RegistryHelper registryHelper = new RegistryHelperImpl();
+    private final SavedDataHelper savedDataHelper = new SavedDataHelperImpl();
+    private final WorldGenHelper worldGenHelper = new WorldGenHelperImpl();
+    private final SpawnHelper spawnHelper = new SpawnHelperImpl();
     
     @Override
     public ResourceLocation createResourceLocation(String namespace, String path) {
@@ -49,5 +56,40 @@ public class McVersion12110 implements McVersion {
     @Override
     public ChunkSyncHelper chunkSync() {
         return chunkSyncHelper;
+    }
+    
+    @Override
+    public EntityCopyHelper entityCopy() {
+        return entityCopyHelper;
+    }
+    
+    @Override
+    public MobSpawnHelper mobSpawn() {
+        return mobSpawnHelper;
+    }
+    
+    @Override
+    public InteractionResultHelper interaction() {
+        return interactionResultHelper;
+    }
+    
+    @Override
+    public RegistryHelper registry() {
+        return registryHelper;
+    }
+    
+    @Override
+    public SavedDataHelper savedData() {
+        return savedDataHelper;
+    }
+    
+    @Override
+    public WorldGenHelper worldGen() {
+        return worldGenHelper;
+    }
+    
+    @Override
+    public SpawnHelper spawn() {
+        return spawnHelper;
     }
 }

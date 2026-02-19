@@ -1,0 +1,11 @@
+{
+    "type": "minecraft:crafting_shapeless",
+    "category": "misc",
+    "ingredients": [
+        { "item": "brightbronze_horizons:brightbronze_ingot" }
+    ],
+    "result": {
+        "id": "brightbronze_horizons:brightbronze_nugget",
+        "count": 9
+    }
+}

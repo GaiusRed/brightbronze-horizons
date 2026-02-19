@@ -1,0 +1,17 @@
+{
+    "type": "minecraft:crafting_shaped",
+    "category": "equipment",
+    "pattern": [
+        "I",
+        "S",
+        "S"
+    ],
+    "key": {
+        "I": { "item": "brightbronze_horizons:brightbronze_ingot" },
+        "S": { "item": "minecraft:stick" }
+    },
+    "result": {
+        "id": "brightbronze_horizons:brightbronze_shovel",
+        "count": 1
+    }
+}

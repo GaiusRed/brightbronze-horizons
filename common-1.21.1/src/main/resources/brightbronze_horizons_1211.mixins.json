@@ -1,0 +1,11 @@
+{
+  "required": true,
+  "package": "red.gaius.brightbronze.mixin.mc1211",
+  "compatibilityLevel": "JAVA_21",
+  "minVersion": "0.8",
+  "client": [
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

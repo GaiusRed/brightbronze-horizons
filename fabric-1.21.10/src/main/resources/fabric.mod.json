@@ -21,7 +21,8 @@
     ]
   },
   "mixins": [
-    "brightbronze_horizons.mixins.json"
+    "brightbronze_horizons.mixins.json",
+    "brightbronze_horizons_12110.mixins.json"
   ],
   "depends": {
     "fabricloader": ">=0.18.4",

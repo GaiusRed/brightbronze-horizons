@@ -35,9 +35,15 @@ subprojects {
         silentMojangMappingsLicense()
     }
 
-    dependencies {
-        minecraft "net.minecraft:minecraft:$rootProject.minecraft_version"
-        mappings loom.officialMojangMappings()
+    // Only apply default minecraft version to subprojects that don't override it.
+    // Subprojects with 1.21.1 in their name (but NOT 1.21.10) will configure their own minecraft/mappings.
+    // Using regex to match exact '1.21.1' followed by end-of-string or non-digit
+    def isVersion1211 = project.name ==~ /.*1\.21\.1($|[^0-9].*)/
+    if (!isVersion1211) {
+        dependencies {
+            minecraft "net.minecraft:minecraft:$rootProject.minecraft_version"
+            mappings loom.officialMojangMappings()
+        }
     }
 
     java {

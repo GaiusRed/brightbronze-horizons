@@ -9,10 +9,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ChunkResult;
 import net.minecraft.server.level.GenerationChunkHolder;
-import net.minecraft.util.ProblemReporter;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.EntitySpawnReason;
-import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.biome.Biome;
@@ -27,12 +24,9 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.chunk.status.ChunkStatus;
 import net.minecraft.world.level.chunk.LevelChunk;
-import net.minecraft.world.level.storage.TagValueInput;
-import net.minecraft.world.level.storage.TagValueOutput;
-import net.minecraft.world.level.storage.ValueInput;
-import net.minecraft.world.level.storage.ValueOutput;
 import net.minecraft.world.phys.AABB;
 import red.gaius.brightbronze.BrightbronzeHorizons;
+import red.gaius.brightbronze.versioned.Versioned;
 import red.gaius.brightbronze.world.rules.BlockReplacementRule;
 
 
@@ -483,14 +477,8 @@ public class ChunkCopyService {
             nbtData.putInt("y", targetPos.getY());
             nbtData.putInt("z", targetPos.getZ());
             
-            // Load data into target block entity using MC 1.21 ValueInput API
-            ValueInput valueInput = TagValueInput.create(
-                ProblemReporter.DISCARDING,
-                targetLevel.registryAccess(),
-                nbtData
-            );
-            targetBlockEntity.loadWithComponents(valueInput);
-            targetBlockEntity.setChanged();
+            // Load data into target block entity using version-specific API
+            Versioned.entityCopy().loadBlockEntityData(targetBlockEntity, nbtData, targetLevel);
             
         } catch (Exception e) {
             BrightbronzeHorizons.LOGGER.warn("Failed to copy block entity at {}: {}", 
@@ -545,15 +533,12 @@ public class ChunkCopyService {
 
         for (Entity sourceEntity : entities) {
             try {
-                // Save entity to NBT using MC 1.21 ValueOutput API
-                TagValueOutput valueOutput = TagValueOutput.createWithContext(
-                    ProblemReporter.DISCARDING,
-                    sourceLevel.registryAccess()
-                );
-                if (!sourceEntity.saveAsPassenger(valueOutput)) {
+                // Serialize entity using version-specific API
+                Optional<CompoundTag> nbtOpt = Versioned.entityCopy().serializeEntity(sourceEntity, sourceLevel);
+                if (nbtOpt.isEmpty()) {
                     continue; // Entity doesn't want to be saved
                 }
-                CompoundTag nbtData = valueOutput.buildResult();
+                CompoundTag nbtData = nbtOpt.get();
 
                 // Calculate new position
                 double newX = sourceEntity.getX() + xOffset;
@@ -570,13 +555,8 @@ public class ChunkCopyService {
                 // Remove UUID so a new one is generated (prevents duplicate UUID issues)
                 nbtData.remove("UUID");
 
-                // Create new entity in target level using MC 1.21 ValueInput API
-                ValueInput valueInput = TagValueInput.create(
-                    ProblemReporter.DISCARDING,
-                    targetLevel.registryAccess(),
-                    nbtData
-                );
-                Optional<Entity> newEntityOpt = EntityType.create(valueInput, targetLevel, EntitySpawnReason.LOAD);
+                // Create new entity using version-specific API
+                Optional<Entity> newEntityOpt = Versioned.entityCopy().deserializeEntity(nbtData, targetLevel);
                 
                 if (newEntityOpt.isPresent()) {
                     Entity newEntity = newEntityOpt.get();

@@ -4,7 +4,7 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.chunk.ChunkGenerator;
 import red.gaius.brightbronze.BrightbronzeHorizons;
-import red.gaius.brightbronze.world.gen.VoidChunkGenerator;
+import red.gaius.brightbronze.versioned.Versioned;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -106,7 +106,7 @@ public class BrightbronzeWorldMarker {
             var overworld = server.getLevel(Level.OVERWORLD);
             if (overworld != null) {
                 ChunkGenerator generator = overworld.getChunkSource().getGenerator();
-                if (generator instanceof VoidChunkGenerator) {
+                if (Versioned.worldGen().isVoidChunkGenerator(generator)) {
                     writeMarkerFile(server);
                     return true;
                 }
