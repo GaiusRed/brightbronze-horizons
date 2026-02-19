@@ -13,6 +13,7 @@ import red.gaius.brightbronze.registry.ModItems;
 import red.gaius.brightbronze.registry.ModWorldGen;
 import red.gaius.brightbronze.world.StartingAreaManager;
 import red.gaius.brightbronze.world.chunk.ChunkExpansionManager;
+import red.gaius.brightbronze.world.compat.ModdedBiomeDetector;
 
 /**
  * Main mod class for Brightbronze Horizons.
@@ -65,7 +66,16 @@ public final class BrightbronzeHorizons {
         LifecycleEvent.SERVER_STARTED.register(server -> {
             BrightbronzeConfig.loadOrCreate(server);
             LOGGER.info("Server started, checking starting area initialization...");
+            
             StartingAreaManager.checkAndInitialize(server);
+            
+            // Log modded biome detection for worldgen mod compatibility (R5)
+            int moddedBiomeCount = ModdedBiomeDetector.getModdedBiomeCount(server.registryAccess());
+            if (moddedBiomeCount > 0) {
+                LOGGER.info("Detected {} modded biomes from worldgen mods - Altered Horizon Anchor is available", moddedBiomeCount);
+            } else {
+                LOGGER.info("No modded biomes detected - Altered Horizon Anchor will be inactive until worldgen mods are installed");
+            }
         });
     }
 }

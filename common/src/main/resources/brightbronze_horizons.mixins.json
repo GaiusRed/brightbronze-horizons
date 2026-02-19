@@ -8,7 +8,8 @@
   ],
   "mixins": [
     "ChunkMapMixin",
-    "MinecraftServerAccessor"
+    "MinecraftServerAccessor",
+    "VoidWorldEnforcerMixin"
   ],
   "injectors": {
     "defaultRequire": 1

@@ -1,7 +1,7 @@
 <img src="brightbronze_horizons.png" width=50 height=50 />
 
 # Brightbronze Horizons
-A Fabric & NeoForge Mod for Minecraft 1.21
+A Fabric & NeoForge Mod for Minecraft 1.21.10+
 
 ## Field Log: Arrival
 

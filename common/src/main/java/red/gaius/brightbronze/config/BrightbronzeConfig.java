@@ -128,7 +128,7 @@ public final class BrightbronzeConfig {
         public int maxStructureCompletionStructures = 8;
 
         /** Hard cap on total chunks spawned for structure completion from a single trigger. */
-        public int maxStructureCompletionChunks = 32;
+        public int maxStructureCompletionChunks = 64;
 
         /** Maximum cascade depth for structure completion (0 = trigger chunk only, 1 = up to 1 hop). */
         public int maxStructureCascadeDepth = 1;
@@ -180,7 +180,7 @@ public final class BrightbronzeConfig {
             }
 
             if (maxStructureCompletionChunks <= 0) {
-                maxStructureCompletionChunks = 32;
+                maxStructureCompletionChunks = 64;
             }
 
             if (maxStructureCascadeDepth < 0) {
