@@ -37,13 +37,13 @@ dependencies {
     // Architectury API for 1.21.1
     modImplementation "dev.architectury:architectury-fabric:$rootProject.architectury_api_version_1211"
 
-    // Version-agnostic common module
-    common(project(path: ':common', configuration: 'namedElements')) { transitive = false }
-    shadowBundle project(path: ':common', configuration: 'transformProductionFabric')
-    
-    // Version-specific implementation (MC 1.21.1)
+    // Version-specific implementation (MC 1.21.1) - MUST come FIRST so its resources override common
     common(project(path: ':common-1.21.1', configuration: 'namedElements')) { transitive = false }
     shadowBundle project(path: ':common-1.21.1', configuration: 'transformProductionFabric')
+
+    // Version-agnostic common module - comes SECOND so version-specific resources win
+    common(project(path: ':common', configuration: 'namedElements')) { transitive = false }
+    shadowBundle project(path: ':common', configuration: 'transformProductionFabric')
 }
 
 processResources {
@@ -57,6 +57,8 @@ processResources {
 shadowJar {
     configurations = [project.configurations.shadowBundle]
     archiveClassifier = 'dev-shadow'
+    // Use INCLUDE strategy so that later JARs (common-1.21.1) override earlier ones (common)
+    duplicatesStrategy = DuplicatesStrategy.INCLUDE
 }
 
 remapJar {

@@ -96,7 +96,8 @@ public class StartingAreaManager {
         // Get the world spawn position using version-specific API
         BlockPos spawnPos = Versioned.spawn().getSpawnPosition(overworld);
         if (spawnPos == null) {
-            spawnPos = overworld.getSharedSpawnPos();
+            // Fallback to origin if spawn data not available
+            spawnPos = BlockPos.ZERO;
         }
         ChunkPos requestedCenterChunk = new ChunkPos(spawnPos);
         
@@ -108,8 +109,8 @@ public class StartingAreaManager {
         // Get the starting biome
         ResourceLocation startingBiome = findStartingBiome(overworld, requestedCenterChunk);
 
-        Registry<Biome> biomeRegistry = overworld.registryAccess().lookupOrThrow(Registries.BIOME);
-        Optional<Holder.Reference<Biome>> startingBiomeHolderOpt = biomeRegistry.get(startingBiome);
+        Registry<Biome> biomeRegistry = Versioned.registry().lookupRegistry(overworld.registryAccess(), Registries.BIOME);
+        Optional<Holder<Biome>> startingBiomeHolderOpt = Versioned.registry().getHolder(biomeRegistry, startingBiome);
         if (startingBiomeHolderOpt.isEmpty()) {
             BrightbronzeHorizons.LOGGER.error("Cannot initialize starting area: unknown biome {}", startingBiome);
             return false;
@@ -364,7 +365,7 @@ public class StartingAreaManager {
         // Find a safe Y position
         int safeY = findSafeSpawnY(level, centerX, centerZ);
         
-        if (safeY > level.getMinY()) {
+        if (safeY > Versioned.level().getMinY(level)) {
             BlockPos newSpawn = new BlockPos(centerX, safeY, centerZ);
             
             // Use version-specific API to set spawn
@@ -389,7 +390,7 @@ public class StartingAreaManager {
         // Start from a reasonable height and work down
         int startY = level.getSeaLevel() + 64;
         
-        for (int y = startY; y > level.getMinY(); y--) {
+        for (int y = startY; y > Versioned.level().getMinY(level); y--) {
             BlockPos pos = new BlockPos(x, y, z);
             BlockPos below = pos.below();
             BlockPos above = pos.above();

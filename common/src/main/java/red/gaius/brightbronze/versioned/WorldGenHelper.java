@@ -1,6 +1,8 @@
 package red.gaius.brightbronze.versioned;
 
 import com.mojang.serialization.MapCodec;
+import net.minecraft.core.Holder;
+import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.chunk.ChunkGenerator;
 
 /**
@@ -28,4 +30,12 @@ public interface WorldGenHelper {
      * this method provides a unified way to check the type.
      */
     boolean isVoidChunkGenerator(ChunkGenerator generator);
+    
+    /**
+     * Creates a new VoidChunkGenerator with the specified biome.
+     * 
+     * <p>Since VoidChunkGenerator implementations are version-specific,
+     * this factory method creates the appropriate version.
+     */
+    ChunkGenerator createVoidChunkGenerator(Holder<Biome> biome);
 }

@@ -8,6 +8,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.biome.Biome;
 import red.gaius.brightbronze.BrightbronzeHorizons;
+import red.gaius.brightbronze.versioned.Versioned;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -31,7 +32,7 @@ public class BiomePoolManager {
      * @return List of biome holders in the tier's pool
      */
     public static List<Holder<Biome>> getBiomesForTier(RegistryAccess registryAccess, ChunkSpawnerTier tier) {
-        Registry<Biome> biomeRegistry = registryAccess.lookupOrThrow(Registries.BIOME);
+        Registry<Biome> biomeRegistry = Versioned.registry().lookupRegistry(registryAccess, Registries.BIOME);
         List<Holder<Biome>> biomes = new ArrayList<>();
         
         // Use getTagOrEmpty to get all biomes with the tier's tag

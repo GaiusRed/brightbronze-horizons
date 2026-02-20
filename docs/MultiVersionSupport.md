@@ -1,7 +1,7 @@
 # Multi-Version Support — Implementation Plan
 
-**Last updated:** 2026-02-19  
-**Status:** 📋 Planning  
+**Last updated:** 2026-02-21  
+**Status:** 🚧 Phase 2 In Progress  
 
 This document defines the phased approach for supporting multiple Minecraft versions (1.21.1 and 1.21.10) using a version-specific subproject structure. The goal is to maintain a single codebase with clean separation of version-dependent code.
 
@@ -23,6 +23,12 @@ Brightbronze Horizons currently targets **Minecraft 1.21.10** exclusively. The m
 | `Item.Properties.humanoidArmor()` | Method-based armor | `ArmorItem` class |
 | `EquipmentAsset` / `EquipmentAssets` | Exists | Does not exist |
 | `PlayerChunkSender.markChunkPendingToSend()` | New chunk sending API | Use `ChunkMap.updateChunkTracking()` |
+| `Registry.get(ResourceKey)` | Returns `Optional<Holder.Reference<T>>` | Returns `T` directly (use `getHolder()`) |
+| `Registry.get(ResourceLocation)` | Returns `Optional<Holder.Reference<T>>` | Use `getOptional()` or `getHolder()` |
+| `CreateWorldScreen.openFresh()` | `(Minecraft, Runnable, CreateWorldCallback)` | `(Minecraft, Screen)` |
+| `Level.getChunk()` | Returns `ChunkAccess` | Returns `LevelChunk` |
+| `SoundType` fields | Direct field access | Use getter methods |
+| Armor texture paths | `textures/entity/equipment/humanoid/` | `textures/models/armor/` |
 
 ### 1.2 Motivation
 
@@ -220,55 +226,71 @@ public void onInitialize() {
 - [x] `:fabric:build` succeeds
 - [x] `:fabric:runClient` — game launches, mod initializes
 - [ ] NeoForge build has transformer issue (to investigate)
-- [ ] Manual test: chunk spawners work as expected
-- [ ] Manual test: all items/blocks/tools/armor present and functional
-- [ ] Manual test: worldgen mod compatibility (Terralith) still works
+- [x] Manual test: chunk spawners work as expected
+- [x] Manual test: all items/blocks/tools/armor present and functional
+- [x] Manual test: worldgen mod compatibility (Terralith) still works
 
 ---
 
-### Phase 2: Add 1.21.1 Support
+### Phase 2: Add 1.21.1 Support 🚧 IN PROGRESS
 
 **Goal:** Implement 1.21.1 versions of all abstracted components. Produce working Fabric and NeoForge builds for 1.21.1.
 
-#### 2.1 Version Properties
+**Status:** ✅ Fabric 1.21.1 builds and runs successfully with worldgen mod compatibility.
 
-- [ ] Create `gradle-1.21.1.properties` with 1.21.1 dependency versions:
+#### 2.1 Version Properties ✅
+
+- [x] Create `gradle-1.21.1.properties` with 1.21.1 dependency versions:
   - `minecraft_version = 1.21.1`
-  - `fabric_api_version = 0.102.0+1.21.1` (approximate)
-  - `neoforge_version = 21.1.x`
-  - `architectury_api_version = 13.0.x` (approximate)
+  - `fabric_api_version = 0.116.8+1.21.1`
+  - `architectury_api_version = 13.0.8`
 
-#### 2.2 Create 1.21.1 Common Implementations
+#### 2.2 Create 1.21.1 Common Implementations ✅
 
-- [ ] Create `common-1.21.1/` subproject
-- [ ] Implement `ItemFactoryImpl` (no `.setId()`)
-- [ ] Implement `ToolFactoryImpl` using `SwordItem`, `PickaxeItem`, etc.
-- [ ] Implement `ArmorFactoryImpl` using `ArmorItem` class
-- [ ] Implement `ChunkSyncHelperImpl` using old chunk tracking API
-- [ ] Implement `ResourceLocationHelperImpl` using constructor
+- [x] Create `common-1.21.1/` subproject
+- [x] Implement `McVersion1211` aggregating all implementations
+- [x] Implement `ItemRegistryImpl` (no `.setId()`)
+- [x] Implement `BlockRegistryImpl` (no `.setId()`)
+- [x] Implement `ToolFactoryImpl` using `SwordItem`, `PickaxeItem`, etc.
+- [x] Implement `ArmorFactoryImpl` using `ArmorItem` class and legacy texture paths
+- [x] Implement `ChunkSyncHelperImpl` using `ChunkMap.updateChunkTracking()`
+- [x] Implement `RegistryHelperImpl` using `getHolder()` instead of `get()`
+- [x] Implement `LevelHelperImpl` for `getChunk()` return type differences
+- [x] Implement `SoundHelperImpl` for `SoundType` field access differences
 
-#### 2.3 Mixin Adjustments
+#### 2.3 Mixin Adjustments ✅
 
-- [ ] Review `ChunkMapMixin.java` for 1.21.1 compatibility
-- [ ] Review `VoidWorldEnforcerMixin.java` for 1.21.1 compatibility
-- [ ] Review `CreateWorldScreenMixin.java` for 1.21.1 compatibility
-- [ ] Create version-specific mixins if method signatures differ
+- [x] Review `ChunkMapMixin.java` for 1.21.1 compatibility — created version-specific mixin
+- [x] Review `VoidWorldEnforcerMixin.java` for 1.21.1 compatibility — fixed `Registry.get()` → `Versioned.registry().getHolderReference()`
+- [x] Review `CreateWorldScreenMixin.java` for 1.21.1 compatibility — created version-specific mixin
+- [x] Create version-specific mixins where method signatures differ:
+  - `common-1.21.1/.../mixin/mc1211/ChunkMapMixin.java` — different field/method names
+  - `common-1.21.1/.../mixin/mc1211/CreateWorldScreenMixin.java` — different `openFresh()` signature
 
-#### 2.4 Create Platform Subprojects
+#### 2.4 Create Platform Subprojects ✅ (Fabric only)
 
-- [ ] Create `fabric-1.21.1/` from `fabric-1.21.10/` template
-- [ ] Create `neoforge-1.21.1/` from `neoforge-1.21.10/` template
-- [ ] Update `fabric.mod.json` / `neoforge.mods.toml` version constraints
-- [ ] Wire up correct `common-1.21.1/` dependency
+- [x] Create `fabric-1.21.1/` from `fabric/` template
+- [ ] Create `neoforge-1.21.1/` from `neoforge/` template (future work)
+- [x] Update `fabric.mod.json` version constraints for 1.21.1
+- [x] Wire up correct `common-1.21.1/` dependency
 
-#### 2.5 Verification Checklist
+#### 2.5 Resource Compatibility ✅
 
-- [ ] `.\gradlew :fabric-1.21.1:build` succeeds
-- [ ] `.\gradlew :neoforge-1.21.1:build` succeeds
-- [ ] `.\gradlew :fabric-1.21.1:runClient` — game launches, create world works
-- [ ] `.\gradlew :neoforge-1.21.1:runClient` — game launches, create world works
-- [ ] Manual test: chunk spawners work as expected
-- [ ] Manual test: all items/blocks/tools/armor present and functional
+- [x] Copy armor textures to legacy 1.21.1 paths (`textures/models/armor/`)
+- [x] Create item model JSON files for chunk spawners (different model format)
+- [x] Verify block textures work correctly
+
+#### 2.6 Verification Checklist ✅
+
+- [x] `.\gradlew :fabric-1.21.1:build` succeeds
+- [ ] `.\gradlew :neoforge-1.21.1:build` succeeds (subproject not created yet)
+- [x] `.\gradlew :fabric-1.21.1:runClient` — game launches, create world works
+- [ ] `.\gradlew :neoforge-1.21.1:runClient` — game launches (subproject not created yet)
+- [x] Manual test: chunk spawners work as expected
+- [x] Manual test: all items/blocks/tools/armor present and functional
+- [x] Manual test: worldgen mod compatibility (JEI, TerraBlender, Biomes O' Plenty, Terralith)
+- [x] Manual test: Brightbronze Horizons pre-selected as default generator
+- [x] Manual test: Altered Horizon Anchor (emerald tier) detects modded biomes
 
 ---
 
@@ -346,6 +368,45 @@ Detailed mapping of APIs between versions for implementers.
 |-----------|--------|---------|
 | Force resync to player | `ChunkMap.updateChunkTracking()` or packet-based | `player.connection.chunkSender.markChunkPendingToSend(chunk)` |
 
+### 4.7 Registry Lookups (NEW)
+
+| Operation | 1.21.1 | 1.21.10 |
+|-----------|--------|---------|
+| Get holder by key | `registry.getHolder(key)` returns `Optional<Holder.Reference<T>>` | `registry.get(key)` returns `Optional<Holder.Reference<T>>` |
+| Get holder by location | `registry.getHolder(id)` returns `Optional<Holder.Reference<T>>` | `registry.get(id)` returns `Optional<Holder.Reference<T>>` |
+| Get value directly | `registry.get(key)` returns `T` | Not available (use `.get(key).map(Holder::value)`) |
+| Get optional value | `registry.getOptional(id)` returns `Optional<T>` | Not available |
+
+### 4.8 Level/Chunk Access (NEW)
+
+| Operation | 1.21.1 | 1.21.10 |
+|-----------|--------|---------|
+| Get chunk from level | `level.getChunk(x, z)` returns `LevelChunk` | `level.getChunk(x, z)` returns `ChunkAccess` |
+| Cast to LevelChunk | Direct return | Cast required: `(LevelChunk) level.getChunk(x, z)` |
+
+### 4.9 SoundType Access (NEW)
+
+| Operation | 1.21.1 | 1.21.10 |
+|-----------|--------|---------|
+| Get break sound | `soundType.getBreakSound()` | `soundType.breakSound()` |
+| Get place sound | `soundType.getPlaceSound()` | `soundType.placeSound()` |
+| Get step sound | `soundType.getStepSound()` | `soundType.stepSound()` |
+
+### 4.10 CreateWorldScreen (NEW)
+
+| Operation | 1.21.1 | 1.21.10 |
+|-----------|--------|---------|
+| Open fresh world screen | `CreateWorldScreen.openFresh(Minecraft, Screen)` | `CreateWorldScreen.openFresh(Minecraft, Runnable, CreateWorldCallback)` |
+| Default preset injection | Intercept `Optional.of(WorldPresets.NORMAL)` in constructor call | Intercept `openCreateWorldScreen()` call |
+
+### 4.11 Armor Textures (NEW)
+
+| Aspect | 1.21.1 | 1.21.10 |
+|--------|--------|---------|
+| Texture path | `textures/models/armor/{material}_layer_1.png` | `textures/entity/equipment/humanoid/{material}.png` |
+| Layer 2 path | `textures/models/armor/{material}_layer_2.png` | `textures/entity/equipment/humanoid_leggings/{material}.png` |
+| Registration | Automatic by naming convention | Via `EquipmentAsset` / `EquipmentAssets` |
+
 ---
 
 ## 5. Risk Assessment
@@ -367,11 +428,49 @@ Phase 1 is complete when:
 - [x] No version-specific code remains in `common/`
 
 Phase 2 is complete when:
-- [ ] Project builds for both 1.21.1 and 1.21.10
-- [ ] Core gameplay loop works on both versions
-- [ ] All items, blocks, and mechanics function correctly
+- [x] Project builds for both 1.21.1 and 1.21.10 (Fabric)
+- [x] Core gameplay loop works on both versions
+- [x] All items, blocks, and mechanics function correctly
+- [x] Worldgen mod compatibility verified (JEI, TerraBlender, BOP, Terralith)
+- [ ] NeoForge builds for 1.21.1 (future work)
 
 Phase 3 is complete when:
 - [ ] Single command builds all artifacts
 - [ ] CI produces all 4 JARs per commit
 - [ ] Documentation covers all supported versions
+
+---
+
+## 7. Version Helper Interfaces
+
+The `common/src/.../versioned/` package contains these abstraction interfaces:
+
+| Interface | Purpose | Key Methods |
+|-----------|---------|-------------|
+| `McVersion` | Aggregates all version helpers | `createResourceLocation()`, `parseResourceLocation()` |
+| `ItemRegistry` | Item property creation | `createItemProperties()`, `createBlockItemProperties()` |
+| `BlockRegistry` | Block property creation | `createBlockProperties()` |
+| `ToolFactory` | Tool item creation | `createSword()`, `createPickaxe()`, etc. |
+| `ArmorFactory` | Armor item creation | `createHelmet()`, `createChestplate()`, etc. |
+| `ChunkSyncHelper` | Chunk resync operations | `resyncChunkToPlayer()` |
+| `RegistryHelper` | Registry lookups | `getHolder()`, `getHolderReference()`, `lookupRegistry()` |
+| `LevelHelper` | Level/chunk access | `getLevelChunk()` |
+| `SoundHelper` | SoundType field access | `getBreakSound()`, `getPlaceSound()` |
+
+Access via: `Versioned.mc()`, `Versioned.items()`, `Versioned.blocks()`, `Versioned.tools()`, `Versioned.armor()`, `Versioned.chunkSync()`, `Versioned.registry()`, `Versioned.level()`, `Versioned.sound()`
+
+---
+
+## 8. Known Issues & Workarounds
+
+### 8.1 Architectury Transformer Warnings
+
+During build, warnings like "Cannot remap openFresh" appear. These are harmless — they indicate methods that exist in only one MC version. The version-specific implementations handle these correctly.
+
+### 8.2 Holder.Reference vs Holder
+
+In 1.21.1, `Registry.getHolder()` returns `Optional<Holder.Reference<T>>`, but many APIs expect just `Holder<T>`. Solution: Use `Versioned.registry().getHolder()` which returns `Optional<Holder<T>>` for general use, or `getHolderReference()` when reflection-based registry modification is needed.
+
+### 8.3 NeoForge 1.21.1 Support
+
+NeoForge 1.21.1 subproject is not yet created. The existing `neoforge/` subproject targets 1.21.10 only. This is tracked as future work.

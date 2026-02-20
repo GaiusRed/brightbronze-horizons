@@ -22,6 +22,9 @@ public class McVersion1211 implements McVersion {
     private final SavedDataHelper savedDataHelper = new SavedDataHelperImpl();
     private final WorldGenHelper worldGenHelper = new WorldGenHelperImpl();
     private final SpawnHelper spawnHelper = new SpawnHelperImpl();
+    private final LevelHelper levelHelper = new LevelHelperImpl();
+    private final ChunkHelper chunkHelper = new ChunkHelperImpl();
+    private final SoundHelper soundHelper = new SoundHelperImpl();
     
     @Override
     public ResourceLocation createResourceLocation(String namespace, String path) {
@@ -93,5 +96,20 @@ public class McVersion1211 implements McVersion {
     @Override
     public SpawnHelper spawn() {
         return spawnHelper;
+    }
+    
+    @Override
+    public LevelHelper level() {
+        return levelHelper;
+    }
+    
+    @Override
+    public ChunkHelper chunk() {
+        return chunkHelper;
+    }
+    
+    @Override
+    public SoundHelper sound() {
+        return soundHelper;
     }
 }

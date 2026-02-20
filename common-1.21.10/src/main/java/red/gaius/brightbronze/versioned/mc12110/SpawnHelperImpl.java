@@ -2,7 +2,9 @@ package red.gaius.brightbronze.versioned.mc12110;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.storage.LevelData;
+import net.minecraft.world.level.storage.ServerLevelData;
 import red.gaius.brightbronze.versioned.SpawnHelper;
 import org.jetbrains.annotations.Nullable;
 
@@ -24,6 +26,14 @@ public class SpawnHelperImpl implements SpawnHelper {
     
     @Override
     public void setSpawnPosition(ServerLevel level, BlockPos pos, float angle) {
-        level.setDefaultSpawnPos(pos, angle);
+        // In 1.21.10, use RespawnData to set spawn
+        LevelData.RespawnData newRespawn = LevelData.RespawnData.of(
+            Level.OVERWORLD,
+            pos,
+            angle,
+            0.0f  // pitch
+        );
+        ServerLevelData levelData = (ServerLevelData) level.getLevelData();
+        levelData.setSpawn(newRespawn);
     }
 }

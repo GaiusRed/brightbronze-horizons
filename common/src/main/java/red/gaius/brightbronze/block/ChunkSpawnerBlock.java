@@ -212,7 +212,7 @@ public class ChunkSpawnerBlock extends Block {
         }
 
         int roll = playableData.nextDeterministicInt(level.getServer(), Math.max(1, pool.totalWeight()));
-        Optional<Holder.Reference<Biome>> selectedOpt = pool.selectByWeight(roll);
+        Optional<Holder<Biome>> selectedOpt = pool.selectByWeight(roll);
         if (selectedOpt.isEmpty()) {
             return SpawnAttemptResult.failure(Component.translatable("message.brightbronze_horizons.spawner.no_biomes"));
         }
@@ -248,7 +248,7 @@ public class ChunkSpawnerBlock extends Block {
         int biomeCount = ModdedBiomeDetector.getModdedBiomeCount(level.registryAccess());
         int roll = playableData.nextDeterministicInt(level.getServer(), biomeCount);
         
-        Optional<Holder.Reference<Biome>> selectedOpt = ModdedBiomeDetector.selectModdedBiome(
+        Optional<Holder<Biome>> selectedOpt = ModdedBiomeDetector.selectModdedBiome(
             level.registryAccess(), roll
         );
         
@@ -259,7 +259,7 @@ public class ChunkSpawnerBlock extends Block {
             );
         }
 
-        Holder.Reference<Biome> selected = selectedOpt.get();
+        Holder<Biome> selected = selectedOpt.get();
         ResourceLocation biomeId = ModdedBiomeDetector.getBiomeId(selected);
         
         if (biomeId == null) {

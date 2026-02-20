@@ -17,6 +17,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.ChunkPos;
+import red.gaius.brightbronze.versioned.Versioned;
 import red.gaius.brightbronze.world.ChunkSpawnerTier;
 import red.gaius.brightbronze.world.PlayableAreaData;
 import red.gaius.brightbronze.world.chunk.ChunkExpansionManager;
@@ -86,8 +87,8 @@ public final class BbhAdminCommands {
     }
 
     private static int forceSpawn(CommandSourceStack source, ResourceLocation biomeId, BlockPos pos, String tierName) {
-        var biomeRegistry = source.getServer().registryAccess().lookupOrThrow(Registries.BIOME);
-        if (biomeRegistry.get(biomeId).isEmpty()) {
+        var biomeRegistry = Versioned.registry().lookupRegistry(source.getServer().registryAccess(), Registries.BIOME);
+        if (Versioned.registry().getHolder(biomeRegistry, biomeId).isEmpty()) {
             source.sendFailure(Component.literal("Unknown biome: " + biomeId));
             return 0;
         }

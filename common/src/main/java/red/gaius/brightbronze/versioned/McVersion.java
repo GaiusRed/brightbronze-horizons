@@ -88,4 +88,19 @@ public interface McVersion {
      * Returns the spawn helper for this Minecraft version.
      */
     SpawnHelper spawn();
+    
+    /**
+     * Returns the level helper for this Minecraft version.
+     */
+    LevelHelper level();
+    
+    /**
+     * Returns the chunk helper for this Minecraft version.
+     */
+    ChunkHelper chunk();
+    
+    /**
+     * Returns the sound helper for this Minecraft version.
+     */
+    SoundHelper sound();
 }

@@ -173,4 +173,28 @@ public final class Versioned {
     public static SpawnHelper spawn() {
         return mc().spawn();
     }
+    
+    /**
+     * Returns the level helper.
+     * Convenience method for {@code mc().level()}.
+     */
+    public static LevelHelper level() {
+        return mc().level();
+    }
+    
+    /**
+     * Returns the chunk helper.
+     * Convenience method for {@code mc().chunk()}.
+     */
+    public static ChunkHelper chunk() {
+        return mc().chunk();
+    }
+    
+    /**
+     * Returns the sound helper.
+     * Convenience method for {@code mc().sound()}.
+     */
+    public static SoundHelper sound() {
+        return mc().sound();
+    }
 }

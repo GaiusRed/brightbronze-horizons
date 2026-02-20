@@ -2,6 +2,9 @@ package red.gaius.brightbronze.world;
 
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
+import net.minecraft.core.HolderLookup;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.NbtOps;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.datafix.DataFixTypes;
@@ -119,6 +122,28 @@ public class PlayableAreaData extends SavedData {
             "Loaded PlayableAreaData: {} chunks, initialized={}",
             this.spawnedChunks.size(), this.initialized
         );
+    }
+    
+    /**
+     * Saves this data to NBT. Required by SavedData in MC 1.21.1.
+     * In MC 1.21.10, serialization is handled by the Codec via SavedDataType.
+     * 
+     * @param compoundTag The compound tag to save to
+     * @param provider The holder lookup provider
+     * @return The saved compound tag
+     */
+    public CompoundTag save(CompoundTag compoundTag, HolderLookup.Provider provider) {
+        return CODEC.encodeStart(NbtOps.INSTANCE, this)
+            .resultOrPartial(error -> BrightbronzeHorizons.LOGGER.error("Failed to save PlayableAreaData: {}", error))
+            .map(tag -> {
+                if (tag instanceof CompoundTag ct) {
+                    return ct;
+                }
+                // If encoding produced a different tag type, wrap it
+                compoundTag.put("data", tag);
+                return compoundTag;
+            })
+            .orElse(compoundTag);
     }
 
     /**

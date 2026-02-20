@@ -28,6 +28,7 @@ import red.gaius.brightbronze.world.dimension.SourceDimensionManager;
 import red.gaius.brightbronze.world.mob.ChunkSpawnMobEvent;
 import red.gaius.brightbronze.world.rules.BiomeRuleManager;
 import red.gaius.brightbronze.world.rules.BlockReplacementRule;
+import red.gaius.brightbronze.versioned.Versioned;
 
 import java.util.ArrayDeque;
 import java.util.Deque;
@@ -189,8 +190,8 @@ public final class ChunkExpansionManager {
 
     @Nullable
     private static ActiveJob startJob(ServerLevel overworld, ExpansionRequest request) {
-        var biomeRegistry = overworld.registryAccess().lookupOrThrow(Registries.BIOME);
-        Optional<Holder.Reference<Biome>> biomeHolderOpt = biomeRegistry.get(request.biomeId);
+        var biomeRegistry = Versioned.registry().lookupRegistry(overworld.registryAccess(), Registries.BIOME);
+        Optional<Holder<Biome>> biomeHolderOpt = Versioned.registry().getHolder(biomeRegistry, request.biomeId);
         if (biomeHolderOpt.isEmpty()) {
             return null;
         }
@@ -348,13 +349,13 @@ public final class ChunkExpansionManager {
         int z = chunkPos.getMiddleBlockZ();
         int y = level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, z);
         double fx = x + 0.5;
-        double fy = Math.max(level.getMinY() + 1, y + 1);
+        double fy = Math.max(Versioned.level().getMinY(level) + 1, y + 1);
         double fz = z + 0.5;
 
         level.sendParticles(ParticleTypes.PORTAL, fx, fy, fz, 120, 4.0, 2.5, 4.0, 0.15);
         level.sendParticles(ParticleTypes.CLOUD, fx, fy, fz, 40, 2.5, 0.8, 2.5, 0.01);
 
-        level.playSound(null, fx, fy, fz, SoundEvents.BEACON_ACTIVATE, SoundSource.BLOCKS, 0.9F, 1.2F);
+        Versioned.sound().playSound(level, fx, fy, fz, SoundEvents.BEACON_ACTIVATE, SoundSource.BLOCKS, 0.9F, 1.2F);
     }
 
     private static void awardFirstChunkAdvancement(MinecraftServer server, @Nullable UUID playerId) {
@@ -474,8 +475,8 @@ public final class ChunkExpansionManager {
             );
 
             // Get biome holder and replacement rules for synchronous copying
-            var biomeRegistry = overworld.registryAccess().lookupOrThrow(Registries.BIOME);
-            Optional<Holder.Reference<Biome>> biomeHolderOpt = biomeRegistry.get(request.biomeId);
+            var biomeRegistry = Versioned.registry().lookupRegistry(overworld.registryAccess(), Registries.BIOME);
+            Optional<Holder<Biome>> biomeHolderOpt = Versioned.registry().getHolder(biomeRegistry, request.biomeId);
             if (biomeHolderOpt.isEmpty()) {
                 BrightbronzeHorizons.LOGGER.warn("Cannot complete structures: biome {} not found", request.biomeId);
                 return ExpansionResult.simpleSuccess();

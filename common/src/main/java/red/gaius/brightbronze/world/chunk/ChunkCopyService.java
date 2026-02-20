@@ -124,8 +124,8 @@ public class ChunkCopyService {
             this.forcedTargetBiome = forcedTargetBiome;
             this.postProcessRules = postProcessRules;
 
-            this.minY = targetLevel.getMinY();
-            this.maxY = targetLevel.getMaxY();
+            this.minY = Versioned.level().getMinY(targetLevel);
+            this.maxY = Versioned.level().getMaxY(targetLevel);
             this.nextY = this.minY;
         }
 
@@ -214,7 +214,7 @@ public class ChunkCopyService {
                     ChunkPostProcessor.apply(targetLevel, targetChunkPos, postProcessRules);
                 }
 
-                targetChunk.markUnsaved();
+                Versioned.chunk().markUnsaved(targetChunk);
 
                 // Force full light update for the chunk.
                 for (int y = minY; y <= maxY; y += 16) {
@@ -324,8 +324,8 @@ public class ChunkCopyService {
             LevelChunk targetChunk = targetLevel.getChunk(targetChunkPos.x, targetChunkPos.z);
 
             // Copy blocks
-            int minY = targetLevel.getMinY();
-            int maxY = targetLevel.getMaxY();
+            int minY = Versioned.level().getMinY(targetLevel);
+            int maxY = Versioned.level().getMaxY(targetLevel);
             int blocksCopied = copyBlocks(sourceLevel, sourceChunkPos, targetLevel, targetChunkPos, minY, maxY + 1);
             
             BrightbronzeHorizons.LOGGER.debug("Copied {} non-air blocks to chunk ({}, {})", 
@@ -345,7 +345,7 @@ public class ChunkCopyService {
             }
 
             // Mark target chunk as needing save and trigger updates
-            targetChunk.markUnsaved();
+            Versioned.chunk().markUnsaved(targetChunk);
             
             // Force full light update for the chunk
             for (int y = minY; y <= maxY; y += 16) {
@@ -378,7 +378,7 @@ public class ChunkCopyService {
         // Fill the chunk's biome container at quart resolution (4x4x4 per section).
         BiomeResolver resolver = (x, y, z, sampler) -> biome;
         targetChunk.fillBiomesFromNoise(resolver, Climate.empty());
-        targetChunk.markUnsaved();
+        Versioned.chunk().markUnsaved(targetChunk);
     }
 
     /**
@@ -510,10 +510,10 @@ public class ChunkCopyService {
         // Create AABB for the entire source chunk (all Y levels)
         AABB chunkBounds = new AABB(
             sourceChunkPos.getMinBlockX(),
-            sourceLevel.getMinY(),
+            Versioned.level().getMinY(sourceLevel),
             sourceChunkPos.getMinBlockZ(),
             sourceChunkPos.getMaxBlockX() + 1,
-            sourceLevel.getMaxY() + 1,
+            Versioned.level().getMaxY(sourceLevel) + 1,
             sourceChunkPos.getMaxBlockZ() + 1
         );
 
@@ -583,7 +583,7 @@ public class ChunkCopyService {
      */
     public static boolean isEmptyChunk(ServerLevel level, ChunkPos chunkPos) {
         // Check the bottom layer for bedrock (sealed chunk indicator)
-        int minY = level.getMinY();
+        int minY = Versioned.level().getMinY(level);
         BlockPos checkPos = new BlockPos(chunkPos.getMiddleBlockX(), minY, chunkPos.getMiddleBlockZ());
         BlockState state = level.getBlockState(checkPos);
         

@@ -13,11 +13,14 @@ import red.gaius.brightbronze.BrightbronzeHorizons;
 import red.gaius.brightbronze.world.BrightbronzeWorldMarker;
 import red.gaius.brightbronze.versioned.Versioned;
 
+import java.util.Optional;
+
 /**
  * MC 1.21.1 version of CreateWorldScreenMixin.
  * 
- * <p>In 1.21.1, the method signature is different - it's called "create" instead of "openFresh",
- * and has a different parameter list.
+ * <p>In 1.21.1, openFresh(Minecraft, Screen) creates a new CreateWorldScreen directly
+ * and passes Optional.of(WorldPresets.NORMAL) to the constructor. We intercept the
+ * Optional.of() call to replace NORMAL with our preset.
  */
 @Mixin(CreateWorldScreen.class)
 public class CreateWorldScreenMixin {
@@ -34,23 +37,27 @@ public class CreateWorldScreenMixin {
     }
 
     /**
-     * Modifies the default preset passed to create() to use Brightbronze instead of NORMAL.
+     * Modifies the preset passed to Optional.of() in openFresh to use Brightbronze instead of NORMAL.
      * 
-     * In MC 1.21.1, the create method has signature:
-     * create(Minecraft minecraft, Screen lastScreen)
-     * which then calls openCreateWorldScreen internally.
+     * In MC 1.21.1, openFresh calls:
+     *   new CreateWorldScreen(minecraft, screen, context, Optional.of(WorldPresets.NORMAL), OptionalLong.empty())
+     * 
+     * We intercept the Optional.of() call to replace NORMAL with our preset.
      */
     @ModifyArg(
-        method = "Lnet/minecraft/client/gui/screens/worldselection/CreateWorldScreen;create(Lnet/minecraft/client/Minecraft;Lnet/minecraft/client/gui/screens/Screen;)V",
+        method = "openFresh(Lnet/minecraft/client/Minecraft;Lnet/minecraft/client/gui/screens/Screen;)V",
         at = @At(
             value = "INVOKE",
-            target = "Lnet/minecraft/client/gui/screens/worldselection/CreateWorldScreen;openCreateWorldScreen(Lnet/minecraft/client/Minecraft;Lnet/minecraft/client/gui/screens/Screen;Ljava/util/function/Function;Lnet/minecraft/client/gui/screens/worldselection/WorldCreationContextMapper;Lnet/minecraft/resources/ResourceKey;)V"
+            target = "Ljava/util/Optional;of(Ljava/lang/Object;)Ljava/util/Optional;"
         ),
-        index = 4
+        index = 0
     )
-    private static ResourceKey<WorldPreset> brightbronze$useCustomDefaultPreset(ResourceKey<WorldPreset> original) {
-        BrightbronzeHorizons.LOGGER.debug("Setting default world preset to Brightbronze (1.21.1)");
-        BrightbronzeWorldMarker.markWorldCreation();
-        return getBrightbronzePreset();
+    private static Object brightbronze$useCustomDefaultPreset(Object original) {
+        if (original instanceof ResourceKey<?> key) {
+            BrightbronzeHorizons.LOGGER.info("Setting default world preset to Brightbronze (1.21.1)");
+            BrightbronzeWorldMarker.markWorldCreation();
+            return getBrightbronzePreset();
+        }
+        return original;
     }
 }
