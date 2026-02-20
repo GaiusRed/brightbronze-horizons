@@ -11,8 +11,8 @@ import red.gaius.brightbronze.command.BbhDebugCommands;
 import red.gaius.brightbronze.command.BbhDiskCommands;
 import red.gaius.brightbronze.versioned.Versioned;
 import red.gaius.brightbronze.versioned.mc1211.McVersion1211;
-import red.gaius.brightbronze.world.mob.MobSpawnTableReloadListener;
-import red.gaius.brightbronze.world.rules.BiomeRuleReloadListener;
+import red.gaius.brightbronze.world.mob1211.MobSpawnTableReloadListener;
+import red.gaius.brightbronze.world.rules1211.BiomeRuleReloadListener;
 
 /**
  * NeoForge entrypoint for Brightbronze Horizons (MC 1.21.1).

@@ -1,7 +1,7 @@
 # Multi-Version Support — Implementation Plan
 
 **Last updated:** 2026-02-21  
-**Status:** 🚧 Phase 2 In Progress  
+**Status:** ✅ Phase 2 Complete — Phase 3 Pending  
 
 This document defines the phased approach for supporting multiple Minecraft versions (1.21.1 and 1.21.10) using a version-specific subproject structure. The goal is to maintain a single codebase with clean separation of version-dependent code.
 
@@ -232,11 +232,11 @@ public void onInitialize() {
 
 ---
 
-### Phase 2: Add 1.21.1 Support 🚧 IN PROGRESS
+### Phase 2: Add 1.21.1 Support ✅ COMPLETE
 
 **Goal:** Implement 1.21.1 versions of all abstracted components. Produce working Fabric and NeoForge builds for 1.21.1.
 
-**Status:** ✅ Fabric 1.21.1 builds and runs successfully with worldgen mod compatibility.
+**Status:** ✅ Both Fabric 1.21.1 and NeoForge 1.21.1 build and run successfully.
 
 #### 2.1 Version Properties ✅
 
@@ -267,12 +267,14 @@ public void onInitialize() {
   - `common-1.21.1/.../mixin/mc1211/ChunkMapMixin.java` — different field/method names
   - `common-1.21.1/.../mixin/mc1211/CreateWorldScreenMixin.java` — different `openFresh()` signature
 
-#### 2.4 Create Platform Subprojects ✅ (Fabric only)
+#### 2.4 Create Platform Subprojects ✅
 
 - [x] Create `fabric-1.21.1/` from `fabric/` template
-- [ ] Create `neoforge-1.21.1/` from `neoforge/` template (future work)
+- [x] Create `neoforge-1.21.1/` from `neoforge/` template
 - [x] Update `fabric.mod.json` version constraints for 1.21.1
+- [x] Update `neoforge.mods.toml` version constraints for 1.21.1
 - [x] Wire up correct `common-1.21.1/` dependency
+- [x] Create version-specific reload listeners for NeoForge 1.21.1 (`PreparableReloadListener` signature differs)
 
 #### 2.5 Resource Compatibility ✅
 
@@ -283,9 +285,9 @@ public void onInitialize() {
 #### 2.6 Verification Checklist ✅
 
 - [x] `.\gradlew :fabric-1.21.1:build` succeeds
-- [ ] `.\gradlew :neoforge-1.21.1:build` succeeds (subproject not created yet)
+- [x] `.\gradlew :neoforge-1.21.1:build` succeeds
 - [x] `.\gradlew :fabric-1.21.1:runClient` — game launches, create world works
-- [ ] `.\gradlew :neoforge-1.21.1:runClient` — game launches (subproject not created yet)
+- [x] `.\gradlew :neoforge-1.21.1:runClient` — game launches, create world works
 - [x] Manual test: chunk spawners work as expected
 - [x] Manual test: all items/blocks/tools/armor present and functional
 - [x] Manual test: worldgen mod compatibility (JEI, TerraBlender, Biomes O' Plenty, Terralith)
@@ -429,10 +431,10 @@ Phase 1 is complete when:
 
 Phase 2 is complete when:
 - [x] Project builds for both 1.21.1 and 1.21.10 (Fabric)
+- [x] Project builds for both 1.21.1 and 1.21.10 (NeoForge)
 - [x] Core gameplay loop works on both versions
 - [x] All items, blocks, and mechanics function correctly
 - [x] Worldgen mod compatibility verified (JEI, TerraBlender, BOP, Terralith)
-- [ ] NeoForge builds for 1.21.1 (future work)
 
 Phase 3 is complete when:
 - [ ] Single command builds all artifacts
@@ -471,6 +473,37 @@ During build, warnings like "Cannot remap openFresh" appear. These are harmless 
 
 In 1.21.1, `Registry.getHolder()` returns `Optional<Holder.Reference<T>>`, but many APIs expect just `Holder<T>`. Solution: Use `Versioned.registry().getHolder()` which returns `Optional<Holder<T>>` for general use, or `getHolderReference()` when reflection-based registry modification is needed.
 
-### 8.3 NeoForge 1.21.1 Support
+### 8.3 NeoForge 1.21.1 Differences
 
-NeoForge 1.21.1 subproject is not yet created. The existing `neoforge/` subproject targets 1.21.10 only. This is tracked as future work.
+NeoForge 1.21.1 has several API differences from 1.21.10:
+
+| Aspect | 1.21.1 | 1.21.10 |
+|--------|--------|---------|
+| Reload event | `AddReloadListenerEvent` | `AddServerReloadListenersEvent` |
+| PreparableReloadListener | `reload(PreparationBarrier, ResourceManager, ProfilerFiller, ProfilerFiller, Executor, Executor)` | `reload(SharedState, Executor, PreparationBarrier, Executor)` |
+| Registry access | `registryOrThrow()` + `.getHolder()` | `lookupOrThrow()` + `.get()` |
+
+**Split package workaround:** NeoForge's dev environment uses Java modules which don't allow split packages. Version-specific implementations must use unique packages:
+- `common/...world/mob/MobSpawnTableReloadListener` — 1.21.10 (uses `SharedState`)
+- `common-1.21.1/...world/mob1211/MobSpawnTableReloadListener` — 1.21.1 (uses old signature)
+
+### 8.4 Package Structure for NeoForge Compatibility
+
+Due to Java module restrictions in NeoForge dev environment, version-specific classes that would normally override `common` classes must be placed in separate packages:
+
+```
+common/
+└── red/gaius/brightbronze/
+    └── versioned/        # Interfaces ONLY (McVersion, ChunkHelper, etc.)
+    └── world/mob/        # 1.21.10 MobSpawnTableReloadListener
+
+common-1.21.1/
+└── red/gaius/brightbronze/
+    └── versioned/
+        └── mc1211/       # All 1.21.1 implementations (*Impl classes)
+    └── world/
+        └── mob1211/      # 1.21.1 MobSpawnTableReloadListener
+        └── rules1211/    # 1.21.1 BiomeRuleReloadListener
+```
+
+This ensures no package overlap between `common` and `common-1.21.1` modules.

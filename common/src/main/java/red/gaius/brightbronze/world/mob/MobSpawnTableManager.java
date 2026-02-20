@@ -45,7 +45,7 @@ public final class MobSpawnTableManager {
         apply(loadTables(resourceManager));
     }
 
-    static Map<ChunkSpawnerTier, List<MobSpawnRule>> loadTables(ResourceManager resourceManager) {
+    public static Map<ChunkSpawnerTier, List<MobSpawnRule>> loadTables(ResourceManager resourceManager) {
         Map<ChunkSpawnerTier, List<MobSpawnRule>> next = new EnumMap<>(ChunkSpawnerTier.class);
 
         for (var entry : resourceManager.listResources(BASE_PATH, id -> id.getPath().endsWith(".json")).entrySet()) {
@@ -73,7 +73,7 @@ public final class MobSpawnTableManager {
         return Map.copyOf(next);
     }
 
-    static void apply(Map<ChunkSpawnerTier, List<MobSpawnRule>> loaded) {
+    public static void apply(Map<ChunkSpawnerTier, List<MobSpawnRule>> loaded) {
         rulesByTier = loaded;
 
         if (BrightbronzeHorizons.LOGGER.isDebugEnabled()) {

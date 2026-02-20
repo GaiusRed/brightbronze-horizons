@@ -58,7 +58,7 @@ public final class BiomeRuleManager {
         apply(loadRules(resourceManager));
     }
 
-    static List<BiomeRule> loadRules(ResourceManager resourceManager) {
+    public static List<BiomeRule> loadRules(ResourceManager resourceManager) {
         List<BiomeRule> rules = new ArrayList<>();
 
         for (var entry : resourceManager.listResources(BASE_PATH, id -> id.getPath().endsWith(".json")).entrySet()) {
@@ -78,7 +78,7 @@ public final class BiomeRuleManager {
         return Collections.unmodifiableList(rules);
     }
 
-    static void apply(List<BiomeRule> rules) {
+    public static void apply(List<BiomeRule> rules) {
         loadedRules = rules;
         rulesGeneration++;
         resolvedCache = new ResolvedCache(rulesGeneration, -1, Map.of(), Map.of());

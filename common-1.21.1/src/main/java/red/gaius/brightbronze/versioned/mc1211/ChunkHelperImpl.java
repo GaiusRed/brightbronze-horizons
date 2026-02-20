@@ -1,6 +1,7 @@
-package red.gaius.brightbronze.versioned;
+package red.gaius.brightbronze.versioned.mc1211;
 
 import net.minecraft.world.level.chunk.LevelChunk;
+import red.gaius.brightbronze.versioned.ChunkHelper;
 
 /**
  * Minecraft 1.21.1 implementation of ChunkHelper.

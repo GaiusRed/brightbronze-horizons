@@ -1,8 +1,9 @@
-package red.gaius.brightbronze.versioned;
+package red.gaius.brightbronze.versioned.mc12110;
 
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundSource;
+import red.gaius.brightbronze.versioned.SoundHelper;
 
 /**
  * Minecraft 1.21.10 implementation of SoundHelper.

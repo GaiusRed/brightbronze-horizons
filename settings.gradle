@@ -24,4 +24,4 @@ include 'neoforge-1.21.10'
 
 // Loader-specific modules for MC 1.21.1
 include 'fabric-1.21.1'
-// include 'neoforge-1.21.1'  // TODO: Fix NeoForge configuration issue
+include 'neoforge-1.21.1'
