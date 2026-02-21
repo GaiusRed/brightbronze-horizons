@@ -169,22 +169,16 @@ public class StartingAreaManager {
             ) && allSuccess;
         }
         
-        // Force save the world to ensure chunk modifications are persisted
-        BrightbronzeHorizons.LOGGER.info("Saving modified chunks...");
-        overworld.save(null, true, false);
+        // NOTE: We do NOT call overworld.save() here - it triggers other mods' save handlers
+        // (like FTBQuests) which may not be fully initialized during SERVER_STARTED.
+        // The chunks are already modified in memory and will be saved naturally when
+        // the world auto-saves or the player leaves. Force-loading ensures they stay loaded.
         
-        // Force unload and reload all starting chunks to ensure fresh state
-        // This is necessary because ChunkHolder caches the original void chunk state
-        BrightbronzeHorizons.LOGGER.info("Refreshing chunk cache...");
-        for (ChunkPos chunkPos : startingChunks) {
-            // Unforce load, let it naturally unload  
-            overworld.setChunkForced(chunkPos.x, chunkPos.z, false);
-        }
-        
-        // Force load them again - this will load the saved version from disk
+        // Force-load all starting chunks to ensure they remain loaded and are saved properly
+        BrightbronzeHorizons.LOGGER.info("Force-loading starting chunks...");
         for (ChunkPos chunkPos : startingChunks) {
             overworld.setChunkForced(chunkPos.x, chunkPos.z, true);
-            // Get the chunk to ensure it's loaded
+            // Get the chunk to ensure it's fully loaded in memory
             overworld.getChunk(chunkPos.x, chunkPos.z);
         }
 

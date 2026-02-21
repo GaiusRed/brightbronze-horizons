@@ -27,6 +27,9 @@ public final class BrightbronzeHorizonsFabric implements ModInitializer {
         
         // Run common setup
         BrightbronzeHorizons.init();
+        
+        // Initialize networking (safe to call here on Fabric)
+        BrightbronzeHorizons.initNetworking();
 
         // Phase 7: datapack-driven mob spawn tables
         ResourceManagerHelper.get(PackType.SERVER_DATA).registerReloadListener(new SimpleSynchronousResourceReloadListener() {
