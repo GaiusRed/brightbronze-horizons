@@ -1,7 +1,7 @@
 <img src="brightbronze_horizons.png" width=50 height=50 />
 
 # Brightbronze Horizons
-A Fabric & NeoForge Mod for Minecraft 1.21.10+
+A Fabric & NeoForge Mod for Minecraft
 
 ## Field Log: Arrival
 
@@ -15,6 +15,12 @@ But I’m not helpless.
 
 I know an alloy, an old explorer’s trick for anchoring unstable places. A bright metal that hums when reality is thin: Brightbronze. If I can make it here, I can do what I was trained to do: Stabilize the frontier. Expand the map. Turn "nowhere" into "somewhere".
 
+## Supported Versions
+
+| Minecraft | Fabric | NeoForge |
+|-----------|--------|----------|
+| 1.21.10   | ✅     | ✅      |
+| 1.21.1    | ✅     | ✅      |
 
 ## Gameplay
 
