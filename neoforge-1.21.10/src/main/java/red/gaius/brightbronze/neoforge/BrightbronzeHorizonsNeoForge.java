@@ -1,6 +1,9 @@
 package red.gaius.brightbronze.neoforge;
 
 import net.minecraft.resources.ResourceLocation;
+import net.neoforged.bus.api.IEventBus;
+import net.neoforged.fml.ModContainer;
+import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.AddServerReloadListenersEvent;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
@@ -19,12 +22,16 @@ import red.gaius.brightbronze.world.rules.BiomeRuleReloadListener;
  */
 @Mod(BrightbronzeHorizons.MOD_ID)
 public final class BrightbronzeHorizonsNeoForge {
-    public BrightbronzeHorizonsNeoForge() {
+    public BrightbronzeHorizonsNeoForge(IEventBus modEventBus, ModContainer modContainer) {
         // Initialize version-specific implementation (MC 1.21.10)
         Versioned.init(new McVersion12110());
         
-        // Run common setup
+        // Run common setup (registry, world gen, etc.)
         BrightbronzeHorizons.init();
+
+        // Defer networking initialization to FMLCommonSetupEvent
+        // This ensures Architectury is fully loaded before we use its NetworkManager
+        modEventBus.addListener(this::onCommonSetup);
 
         // Phase 7: datapack-driven mob spawn tables
         NeoForge.EVENT_BUS.addListener((AddServerReloadListenersEvent event) ->
@@ -56,5 +63,13 @@ public final class BrightbronzeHorizonsNeoForge {
         NeoForge.EVENT_BUS.addListener((RegisterCommandsEvent event) ->
             BbhAdminCommands.register(event.getDispatcher())
         );
+    }
+
+    /**
+     * Called during FMLCommonSetupEvent - safe to use Architectury APIs here.
+     */
+    private void onCommonSetup(FMLCommonSetupEvent event) {
+        // Initialize networking on the main thread to ensure thread safety
+        event.enqueueWork(BrightbronzeHorizons::initNetworking);
     }
 }

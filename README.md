@@ -22,6 +22,8 @@ I know an alloy, an old explorer’s trick for anchoring unstable places. A brig
 | 1.21.10   | ✅     | ✅      |
 | 1.21.1    | ✅     | ✅      |
 
+Note: Neoforge 1.21.1 has been tested to work with `All the Mods 10`. When using with kitchen sink modpacks, please adjust the configuration via [Modpack Configuration](/docs/ModpackConfiguration.md) to avoid accidentally spawning a massive dungeon with an Altered Horizon Anchor minutes into the mod. Initial world generation may also take a bit more time than usual.
+
 ## Gameplay
 
 **Brightbronze Horizons** drops you into a fragile realm: you always begin in a **plains village**, surrounded by the **void**. The village is safe. The edge is not.

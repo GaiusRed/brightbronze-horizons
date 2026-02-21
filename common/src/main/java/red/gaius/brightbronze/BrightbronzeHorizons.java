@@ -45,9 +45,6 @@ public final class BrightbronzeHorizons {
         // Register world generation components (chunk generators)
         ModWorldGen.register();
 
-        // Network packets (Phase 8: dedicated server config sync)
-        BrightbronzeNetworking.init();
-
         // Phase 10/11: central server-side expansion manager (queue + bounded work)
         ChunkExpansionManager.init();
         
@@ -55,6 +52,16 @@ public final class BrightbronzeHorizons {
         registerServerEvents();
 
         LOGGER.info("Brightbronze Horizons initialized!");
+    }
+
+    /**
+     * Late initialization for networking - must be called after mod loading is complete.
+     * On NeoForge, this should be called from FMLCommonSetupEvent.
+     * On Fabric, this can be called from the mod initializer.
+     */
+    public static void initNetworking() {
+        LOGGER.info("Initializing Brightbronze Horizons networking...");
+        BrightbronzeNetworking.init();
     }
     
     /**
