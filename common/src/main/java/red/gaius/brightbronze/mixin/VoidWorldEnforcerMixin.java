@@ -16,8 +16,8 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import red.gaius.brightbronze.BrightbronzeHorizons;
+import red.gaius.brightbronze.versioned.Versioned;
 import red.gaius.brightbronze.world.BrightbronzeWorldMarker;
-import red.gaius.brightbronze.world.gen.VoidChunkGenerator;
 
 import java.lang.reflect.Field;
 import java.util.Optional;
@@ -62,24 +62,24 @@ public abstract class VoidWorldEnforcerMixin {
         
         try {
             RegistryAccess registries = registryAccess();
-            Registry<LevelStem> dimensions = registries.lookupOrThrow(Registries.LEVEL_STEM);
+            Registry<LevelStem> dimensions = Versioned.registry().lookupRegistry(registries, Registries.LEVEL_STEM);
             
             // Check current overworld generator
             LevelStem overworldStem = dimensions.getOptional(LevelStem.OVERWORLD).orElse(null);
             if (overworldStem != null) {
                 ChunkGenerator currentGenerator = overworldStem.generator();
-                boolean isVoidGenerator = currentGenerator instanceof VoidChunkGenerator;
+                boolean isVoidGenerator = Versioned.worldGen().isVoidChunkGenerator(currentGenerator);
                 
                 // If this is a Brightbronze world and the generator was overridden, replace it
                 if (!isVoidGenerator) {
                     BrightbronzeHorizons.LOGGER.info("Worldgen mod detected - enforcing VoidChunkGenerator for Brightbronze world");
                     
                     // Get the biome registry to create a new VoidChunkGenerator
-                    Registry<Biome> biomeRegistry = registries.lookupOrThrow(Registries.BIOME);
-                    Holder<Biome> plainsBiome = biomeRegistry.getOrThrow(Biomes.PLAINS);
+                    Registry<Biome> biomeRegistry = Versioned.registry().lookupRegistry(registries, Registries.BIOME);
+                    Holder<Biome> plainsBiome = Versioned.registry().getHolderOrThrow(biomeRegistry, Biomes.PLAINS);
                     
                     // Create a new VoidChunkGenerator with the plains biome holder
-                    VoidChunkGenerator voidGenerator = new VoidChunkGenerator(plainsBiome);
+                    ChunkGenerator voidGenerator = Versioned.worldGen().createVoidChunkGenerator(plainsBiome);
                     
                     // Create a new LevelStem with our generator but the same dimension type
                     LevelStem newOverworldStem = new LevelStem(overworldStem.type(), voidGenerator);
@@ -106,8 +106,9 @@ public abstract class VoidWorldEnforcerMixin {
     @SuppressWarnings("unchecked")
     private boolean replaceInRegistry(Registry<LevelStem> registry, ResourceKey<LevelStem> key, LevelStem newValue) {
         try {
-            // Find the holder for the overworld using registry.get()
-            Optional<Holder.Reference<LevelStem>> holderOpt = registry.get(key);
+            // Find the holder for the overworld using version-specific getHolderReference
+            // This works on both 1.21.1 and 1.21.10 despite API differences
+            Optional<Holder.Reference<LevelStem>> holderOpt = Versioned.registry().getHolderReference(registry, key);
             if (holderOpt.isEmpty()) {
                 BrightbronzeHorizons.LOGGER.warn("No holder found for dimension: {}", key.location());
                 return false;

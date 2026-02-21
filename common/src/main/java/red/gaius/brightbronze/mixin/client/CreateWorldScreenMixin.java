@@ -11,6 +11,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.ModifyArg;
 import red.gaius.brightbronze.BrightbronzeHorizons;
 import red.gaius.brightbronze.world.BrightbronzeWorldMarker;
+import red.gaius.brightbronze.versioned.Versioned;
 
 /**
  * Mixin to make the Brightbronze Horizons world preset the default selection
@@ -20,12 +21,15 @@ import red.gaius.brightbronze.world.BrightbronzeWorldMarker;
 public class CreateWorldScreenMixin {
 
     /**
-     * The resource key for our custom world preset.
+     * Gets the resource key for our custom world preset.
+     * Uses the version abstraction for ResourceLocation creation.
      */
-    private static final ResourceKey<WorldPreset> BRIGHTBRONZE_PRESET = ResourceKey.create(
-        Registries.WORLD_PRESET,
-        ResourceLocation.fromNamespaceAndPath(BrightbronzeHorizons.MOD_ID, "brightbronze")
-    );
+    private static ResourceKey<WorldPreset> getBrightbronzePreset() {
+        return ResourceKey.create(
+            Registries.WORLD_PRESET,
+            Versioned.mc().createResourceLocation(BrightbronzeHorizons.MOD_ID, "brightbronze")
+        );
+    }
 
     /**
      * Modifies the default preset passed to openCreateWorldScreen to use Brightbronze instead of NORMAL.
@@ -42,6 +46,6 @@ public class CreateWorldScreenMixin {
         BrightbronzeHorizons.LOGGER.debug("Setting default world preset to Brightbronze");
         // Mark that we're creating a Brightbronze world
         BrightbronzeWorldMarker.markWorldCreation();
-        return BRIGHTBRONZE_PRESET;
+        return getBrightbronzePreset();
     }
 }

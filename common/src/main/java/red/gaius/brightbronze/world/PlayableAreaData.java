@@ -2,6 +2,9 @@ package red.gaius.brightbronze.world;
 
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
+import net.minecraft.core.HolderLookup;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.NbtOps;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.datafix.DataFixTypes;
@@ -9,8 +12,8 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.saveddata.SavedData;
-import net.minecraft.world.level.saveddata.SavedDataType;
 import red.gaius.brightbronze.BrightbronzeHorizons;
+import red.gaius.brightbronze.versioned.Versioned;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -58,13 +61,11 @@ public class PlayableAreaData extends SavedData {
         ).apply(instance, PlayableAreaData::new)
     );
     
-    /** SavedDataType for MC 1.21 data storage API */
-    public static final SavedDataType<PlayableAreaData> TYPE = new SavedDataType<>(
-        DATA_NAME,
-        PlayableAreaData::new,
-        CODEC,
-        DataFixTypes.LEVEL
-    );
+    /** Data name for saved data storage */
+    public static final String DATA_NAME_VALUE = DATA_NAME;
+    
+    /** DataFixTypes for data storage */
+    public static final DataFixTypes DATA_FIX_TYPES = DataFixTypes.LEVEL;
     
     /** All chunks that are part of the playable area */
     private final Set<ChunkPos> spawnedChunks;
@@ -122,6 +123,28 @@ public class PlayableAreaData extends SavedData {
             this.spawnedChunks.size(), this.initialized
         );
     }
+    
+    /**
+     * Saves this data to NBT. Required by SavedData in MC 1.21.1.
+     * In MC 1.21.10, serialization is handled by the Codec via SavedDataType.
+     * 
+     * @param compoundTag The compound tag to save to
+     * @param provider The holder lookup provider
+     * @return The saved compound tag
+     */
+    public CompoundTag save(CompoundTag compoundTag, HolderLookup.Provider provider) {
+        return CODEC.encodeStart(NbtOps.INSTANCE, this)
+            .resultOrPartial(error -> BrightbronzeHorizons.LOGGER.error("Failed to save PlayableAreaData: {}", error))
+            .map(tag -> {
+                if (tag instanceof CompoundTag ct) {
+                    return ct;
+                }
+                // If encoding produced a different tag type, wrap it
+                compoundTag.put("data", tag);
+                return compoundTag;
+            })
+            .orElse(compoundTag);
+    }
 
     /**
      * Gets the PlayableAreaData for the given server.
@@ -136,7 +159,7 @@ public class PlayableAreaData extends SavedData {
             throw new IllegalStateException("Overworld not loaded");
         }
         
-        return overworld.getDataStorage().computeIfAbsent(TYPE);
+        return Versioned.savedData().getPlayableAreaData(overworld.getDataStorage());
     }
 
     /**

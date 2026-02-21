@@ -13,13 +13,44 @@ allprojects {
     version = rootProject.mod_version
 }
 
+// Task to build all release artifacts
+tasks.register('buildAll') {
+    group = 'build'
+    description = 'Builds all 4 release artifacts (Fabric + NeoForge for 1.21.1 and 1.21.10)'
+    dependsOn ':fabric-1.21.1:build', ':fabric-1.21.10:build', ':neoforge-1.21.1:build', ':neoforge-1.21.10:build'
+    
+    doLast {
+        println ''
+        println '============================================'
+        println 'Build complete! Release artifacts:'
+        println '============================================'
+        
+        def artifacts = [
+            'fabric-1.21.1', 'fabric-1.21.10',
+            'neoforge-1.21.1', 'neoforge-1.21.10'
+        ]
+        
+        artifacts.each { subproj ->
+            def libsDir = file("${subproj}/build/libs")
+            if (libsDir.exists()) {
+                libsDir.eachFile { f ->
+                    if (f.name.endsWith('.jar') && !f.name.contains('sources') && !f.name.contains('dev')) {
+                        println "  ${f.name}"
+                    }
+                }
+            }
+        }
+        println '============================================'
+    }
+}
+
 subprojects {
     apply plugin: 'dev.architectury.loom'
     apply plugin: 'architectury-plugin'
     apply plugin: 'maven-publish'
 
     base {
-        // Set up a suffixed format for the mod jar names, e.g. `example-fabric`.
+        // Set up a suffixed format for the mod jar names, e.g. `brightbronze_horizons-fabric-1.21.10`.
         archivesName = "$rootProject.archives_name-$project.name"
     }
 
@@ -35,9 +66,15 @@ subprojects {
         silentMojangMappingsLicense()
     }
 
-    dependencies {
-        minecraft "net.minecraft:minecraft:$rootProject.minecraft_version"
-        mappings loom.officialMojangMappings()
+    // Only apply default minecraft version to subprojects that don't override it.
+    // Subprojects with 1.21.1 in their name (but NOT 1.21.10) will configure their own minecraft/mappings.
+    // Using regex to match exact '1.21.1' followed by end-of-string or non-digit
+    def isVersion1211 = project.name ==~ /.*1\.21\.1($|[^0-9].*)/
+    if (!isVersion1211) {
+        dependencies {
+            minecraft "net.minecraft:minecraft:$rootProject.minecraft_version"
+            mappings loom.officialMojangMappings()
+        }
     }
 
     java {

@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "id": "brightbronze_horizons",
+  "version": "${version}",
+  "name": "Brightbronze Horizons",
+  "description": "A chunk-expansion mod where players expand their playable area by spawning terrain chunks from biome-coherent source dimensions.",
+  "authors": [
+    "Gaius"
+  ],
+  "contact": {
+  },
+  "license": "MIT",
+  "icon": "assets/brightbronze_horizons/icon.png",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "red.gaius.brightbronze.fabric.BrightbronzeHorizonsFabric"
+    ],
+    "client": [
+      "red.gaius.brightbronze.fabric.client.BrightbronzeHorizonsFabricClient"
+    ]
+  },
+  "mixins": [
+    "brightbronze_horizons.mixins.json",
+    "brightbronze_horizons_1211.mixins.json"
+  ],
+  "depends": {
+    "fabricloader": ">=0.16.0",
+    "minecraft": "~1.21.1",
+    "java": ">=21",
+    "architectury": ">=13.0.0",
+    "fabric-api": "*"
+  }
+}

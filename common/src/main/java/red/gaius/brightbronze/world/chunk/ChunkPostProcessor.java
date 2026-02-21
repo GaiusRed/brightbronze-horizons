@@ -9,6 +9,7 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import red.gaius.brightbronze.BrightbronzeHorizons;
+import red.gaius.brightbronze.versioned.Versioned;
 import red.gaius.brightbronze.world.rules.BlockReplacementRule;
 
 import java.util.List;
@@ -29,8 +30,8 @@ public final class ChunkPostProcessor {
         }
 
         int replaced = 0;
-        int minY = level.getMinY();
-        int maxY = level.getMaxY();
+        int minY = Versioned.level().getMinY(level);
+        int maxY = Versioned.level().getMaxY(level);
 
         BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
 

@@ -17,6 +17,7 @@ import net.minecraft.util.GsonHelper;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.level.biome.Biome;
 import red.gaius.brightbronze.BrightbronzeHorizons;
+import red.gaius.brightbronze.versioned.Versioned;
 import red.gaius.brightbronze.world.BiomePoolManager;
 import red.gaius.brightbronze.world.ChunkSpawnerTier;
 import red.gaius.brightbronze.world.mob.MobSpawnRule;
@@ -57,7 +58,7 @@ public final class BiomeRuleManager {
         apply(loadRules(resourceManager));
     }
 
-    static List<BiomeRule> loadRules(ResourceManager resourceManager) {
+    public static List<BiomeRule> loadRules(ResourceManager resourceManager) {
         List<BiomeRule> rules = new ArrayList<>();
 
         for (var entry : resourceManager.listResources(BASE_PATH, id -> id.getPath().endsWith(".json")).entrySet()) {
@@ -77,7 +78,7 @@ public final class BiomeRuleManager {
         return Collections.unmodifiableList(rules);
     }
 
-    static void apply(List<BiomeRule> rules) {
+    public static void apply(List<BiomeRule> rules) {
         loadedRules = rules;
         rulesGeneration++;
         resolvedCache = new ResolvedCache(rulesGeneration, -1, Map.of(), Map.of());
@@ -120,14 +121,14 @@ public final class BiomeRuleManager {
             return;
         }
 
-        Registry<Biome> biomeRegistry = registryAccess.lookupOrThrow(Registries.BIOME);
+        Registry<Biome> biomeRegistry = Versioned.registry().lookupRegistry(registryAccess, Registries.BIOME);
 
         // Registry iteration APIs differ across MC versions. Instead of iterating every biome in
         // the registry, build a candidate set from:
         // - tier biome tags (back-compat)
         // - rule biome tags
         // - rule allow lists
-        Map<ResourceLocation, Holder.Reference<Biome>> candidates = new HashMap<>();
+        Map<ResourceLocation, Holder<Biome>> candidates = new HashMap<>();
 
         for (ChunkSpawnerTier tier : ChunkSpawnerTier.values()) {
             if (tier == ChunkSpawnerTier.COAL) {
@@ -135,8 +136,8 @@ public final class BiomeRuleManager {
             }
             biomeRegistry.getTagOrEmpty(tier.getBiomePoolTag()).forEach(holder -> {
                 ResourceLocation id2 = BiomePoolManager.getBiomeId(holder);
-                if (id2 != null && holder instanceof Holder.Reference<Biome> ref) {
-                    candidates.putIfAbsent(id2, ref);
+                if (id2 != null) {
+                    candidates.putIfAbsent(id2, holder);
                 }
             });
         }
@@ -145,15 +146,15 @@ public final class BiomeRuleManager {
             if (rule.biomeTag() != null) {
                 biomeRegistry.getTagOrEmpty(rule.biomeTag()).forEach(holder -> {
                     ResourceLocation id2 = BiomePoolManager.getBiomeId(holder);
-                    if (id2 != null && holder instanceof Holder.Reference<Biome> ref) {
-                        candidates.putIfAbsent(id2, ref);
+                    if (id2 != null) {
+                        candidates.putIfAbsent(id2, holder);
                     }
                 });
             }
 
             for (ResourceLocation allowId : rule.allow()) {
-                var opt = biomeRegistry.get(allowId);
-                opt.ifPresent(ref -> candidates.putIfAbsent(allowId, ref));
+                var opt = Versioned.registry().getHolder(biomeRegistry, allowId);
+                opt.ifPresent(holder -> candidates.putIfAbsent(allowId, holder));
             }
         }
 
@@ -166,7 +167,7 @@ public final class BiomeRuleManager {
         // Resolve per-biome rule stacking.
         for (var entry : candidates.entrySet()) {
             ResourceLocation biomeId = entry.getKey();
-            Holder.Reference<Biome> holder = entry.getValue();
+            Holder<Biome> holder = entry.getValue();
 
             List<BiomeRule> matching = new ArrayList<>();
             for (BiomeRule rule : loadedRules) {
@@ -227,7 +228,7 @@ public final class BiomeRuleManager {
                 continue; // Coal is local-biome; no pool selection.
             }
 
-            Holder.Reference<Biome> holder = candidates.get(biomeId);
+            Holder<Biome> holder = candidates.get(biomeId);
             if (holder != null) {
                 pools.get(resolved.tier).entries.add(new WeightedBiomeEntry(holder, resolved.weight));
             }
@@ -429,7 +430,7 @@ public final class BiomeRuleManager {
     private record ResolvedCache(int generation, int registryIdentity, Map<ResourceLocation, ResolvedBiome> byBiomeId, Map<ChunkSpawnerTier, WeightedBiomePool> poolsByTier) {
     }
 
-    public record WeightedBiomeEntry(Holder.Reference<Biome> biome, int weight) {
+    public record WeightedBiomeEntry(Holder<Biome> biome, int weight) {
     }
 
     public static final class WeightedBiomePool {
@@ -465,7 +466,7 @@ public final class BiomeRuleManager {
             return entries;
         }
 
-        public Optional<Holder.Reference<Biome>> selectByWeight(int roll) {
+        public Optional<Holder<Biome>> selectByWeight(int roll) {
             if (isEmpty()) {
                 return Optional.empty();
             }

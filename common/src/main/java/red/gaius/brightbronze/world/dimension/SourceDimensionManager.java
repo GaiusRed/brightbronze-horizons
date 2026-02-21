@@ -16,6 +16,7 @@ import net.minecraft.world.level.levelgen.NoiseBasedChunkGenerator;
 import net.minecraft.world.level.levelgen.NoiseGeneratorSettings;
 import red.gaius.brightbronze.BrightbronzeHorizons;
 import red.gaius.brightbronze.registry.ModDimensions;
+import red.gaius.brightbronze.versioned.Versioned;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -138,9 +139,8 @@ public class SourceDimensionManager {
         
         // Resolve the biome
         ResourceKey<Biome> biomeKey = ResourceKey.create(Registries.BIOME, biomeId);
-        Holder<Biome> biomeHolder = server.registryAccess()
-                .lookupOrThrow(Registries.BIOME)
-                .get(biomeKey)
+        var biomeRegistry = Versioned.registry().lookupRegistry(server.registryAccess(), Registries.BIOME);
+        Holder<Biome> biomeHolder = Versioned.registry().getHolder(biomeRegistry, biomeKey)
                 .orElse(null);
 
         if (biomeHolder == null) {
@@ -157,9 +157,8 @@ public class SourceDimensionManager {
             noiseKey = NoiseGeneratorSettings.END;
         }
 
-        Holder<NoiseGeneratorSettings> noiseSettings = server.registryAccess()
-                .lookupOrThrow(Registries.NOISE_SETTINGS)
-                .getOrThrow(noiseKey);
+        var noiseRegistry = Versioned.registry().lookupRegistry(server.registryAccess(), Registries.NOISE_SETTINGS);
+        Holder<NoiseGeneratorSettings> noiseSettings = Versioned.registry().getHolderOrThrow(noiseRegistry, noiseKey);
 
         // Create a fixed biome source that always returns our target biome
         FixedBiomeSource biomeSource = new FixedBiomeSource(biomeHolder);

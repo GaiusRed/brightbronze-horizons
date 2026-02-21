@@ -7,6 +7,7 @@ import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.biome.Biome;
 import red.gaius.brightbronze.BrightbronzeHorizons;
+import red.gaius.brightbronze.versioned.Versioned;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -39,7 +40,7 @@ public final class ModdedBiomeDetector {
      * @param registryAccess The registry access from the server or level
      * @return Unmodifiable list of modded biome holders; empty list if none found
      */
-    public static List<Holder.Reference<Biome>> getModdedBiomes(RegistryAccess registryAccess) {
+    public static List<Holder<Biome>> getModdedBiomes(RegistryAccess registryAccess) {
         return ensureDetected(registryAccess).moddedBiomes();
     }
 
@@ -70,8 +71,8 @@ public final class ModdedBiomeDetector {
      * @param index The index to select (should be in range [0, count))
      * @return The selected biome holder, or empty if index is out of range or no modded biomes exist
      */
-    public static Optional<Holder.Reference<Biome>> selectModdedBiome(RegistryAccess registryAccess, int index) {
-        List<Holder.Reference<Biome>> biomes = ensureDetected(registryAccess).moddedBiomes();
+    public static Optional<Holder<Biome>> selectModdedBiome(RegistryAccess registryAccess, int index) {
+        List<Holder<Biome>> biomes = ensureDetected(registryAccess).moddedBiomes();
         if (biomes.isEmpty() || index < 0 || index >= biomes.size()) {
             return Optional.empty();
         }
@@ -121,15 +122,15 @@ public final class ModdedBiomeDetector {
      * Scans the biome registry and collects all non-minecraft: namespaced biomes.
      */
     private static DetectionResult detectModdedBiomes(RegistryAccess registryAccess, int registryIdentity) {
-        Registry<Biome> biomeRegistry = registryAccess.lookupOrThrow(Registries.BIOME);
-        List<Holder.Reference<Biome>> moddedBiomes = new ArrayList<>();
+        Registry<Biome> biomeRegistry = Versioned.registry().lookupRegistry(registryAccess, Registries.BIOME);
+        List<Holder<Biome>> moddedBiomes = new ArrayList<>();
 
         // Iterate all biome keys in the registry
         for (ResourceLocation biomeId : biomeRegistry.keySet()) {
             // Check if this is a modded biome (not from minecraft namespace)
             if (!biomeId.getNamespace().equals("minecraft")) {
-                // Look up the holder reference
-                var holderOpt = biomeRegistry.get(biomeId);
+                // Look up the holder reference using versioned helper
+                var holderOpt = Versioned.registry().getHolder(biomeRegistry, biomeId);
                 if (holderOpt.isPresent()) {
                     moddedBiomes.add(holderOpt.get());
                 }
@@ -138,8 +139,11 @@ public final class ModdedBiomeDetector {
 
         // Sort for deterministic ordering (by resource location)
         moddedBiomes.sort((a, b) -> {
-            ResourceLocation idA = a.key().location();
-            ResourceLocation idB = b.key().location();
+            ResourceLocation idA = a.unwrapKey().map(k -> k.location()).orElse(null);
+            ResourceLocation idB = b.unwrapKey().map(k -> k.location()).orElse(null);
+            if (idA == null && idB == null) return 0;
+            if (idA == null) return 1;
+            if (idB == null) return -1;
             return idA.compareTo(idB);
         });
 
@@ -157,9 +161,10 @@ public final class ModdedBiomeDetector {
     /**
      * Counts unique namespaces among the detected biomes.
      */
-    private static long countUniqueNamespaces(List<Holder.Reference<Biome>> biomes) {
+    private static long countUniqueNamespaces(List<Holder<Biome>> biomes) {
         return biomes.stream()
-            .map(h -> h.key().location().getNamespace())
+            .flatMap(h -> h.unwrapKey().stream())
+            .map(key -> key.location().getNamespace())
             .distinct()
             .count();
     }
@@ -170,6 +175,6 @@ public final class ModdedBiomeDetector {
      * @param registryIdentity Identity hash of the registry access used for detection
      * @param moddedBiomes Unmodifiable list of detected modded biomes
      */
-    private record DetectionResult(int registryIdentity, List<Holder.Reference<Biome>> moddedBiomes) {
+    private record DetectionResult(int registryIdentity, List<Holder<Biome>> moddedBiomes) {
     }
 }

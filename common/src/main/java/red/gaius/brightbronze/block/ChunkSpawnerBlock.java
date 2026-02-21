@@ -24,6 +24,7 @@ import red.gaius.brightbronze.world.chunk.ChunkExpansionManager;
 import red.gaius.brightbronze.world.compat.ModdedBiomeDetector;
 import red.gaius.brightbronze.world.rules.BiomeRuleManager;
 import red.gaius.brightbronze.world.rules.BiomeRuleManager.WeightedBiomePool;
+import red.gaius.brightbronze.versioned.Versioned;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -69,7 +70,7 @@ public class ChunkSpawnerBlock extends Block {
     @Override
     protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player, BlockHitResult hitResult) {
         if (level.isClientSide()) {
-            return InteractionResult.SUCCESS;
+            return Versioned.interaction().success();
         }
 
         if (!BrightbronzeConfig.isTierEnabled(tier)) {
@@ -77,7 +78,7 @@ public class ChunkSpawnerBlock extends Block {
                 Component.translatable("message.brightbronze_horizons.spawner.tier_disabled", tier.getName()),
                 true
             );
-            return InteractionResult.FAIL;
+            return Versioned.interaction().fail();
         }
 
         ServerLevel serverLevel = (ServerLevel) level;
@@ -91,7 +92,7 @@ public class ChunkSpawnerBlock extends Block {
                 Component.translatable("message.brightbronze_horizons.spawner.not_at_edge"),
                 true
             );
-            return InteractionResult.FAIL;
+            return Versioned.interaction().fail();
         }
 
         // Select direction (random if at corner)
@@ -115,7 +116,7 @@ public class ChunkSpawnerBlock extends Block {
         SpawnAttemptResult selection = selectBiomeForSpawn(serverLevel, playableData, pos);
         if (!selection.success()) {
             player.displayClientMessage(selection.failureMessage(), true);
-            return InteractionResult.FAIL;
+            return Versioned.interaction().fail();
         }
 
         ChunkExpansionManager.EnqueueResult enqueueResult = ChunkExpansionManager.enqueue(
@@ -130,10 +131,10 @@ public class ChunkSpawnerBlock extends Block {
 
         if (!enqueueResult.accepted()) {
             player.displayClientMessage(enqueueResult.failureMessage(), true);
-            return InteractionResult.FAIL;
+            return Versioned.interaction().fail();
         }
 
-        return InteractionResult.CONSUME;
+        return Versioned.interaction().consume();
     }
 
     /**
@@ -211,7 +212,7 @@ public class ChunkSpawnerBlock extends Block {
         }
 
         int roll = playableData.nextDeterministicInt(level.getServer(), Math.max(1, pool.totalWeight()));
-        Optional<Holder.Reference<Biome>> selectedOpt = pool.selectByWeight(roll);
+        Optional<Holder<Biome>> selectedOpt = pool.selectByWeight(roll);
         if (selectedOpt.isEmpty()) {
             return SpawnAttemptResult.failure(Component.translatable("message.brightbronze_horizons.spawner.no_biomes"));
         }
@@ -247,7 +248,7 @@ public class ChunkSpawnerBlock extends Block {
         int biomeCount = ModdedBiomeDetector.getModdedBiomeCount(level.registryAccess());
         int roll = playableData.nextDeterministicInt(level.getServer(), biomeCount);
         
-        Optional<Holder.Reference<Biome>> selectedOpt = ModdedBiomeDetector.selectModdedBiome(
+        Optional<Holder<Biome>> selectedOpt = ModdedBiomeDetector.selectModdedBiome(
             level.registryAccess(), roll
         );
         
@@ -258,7 +259,7 @@ public class ChunkSpawnerBlock extends Block {
             );
         }
 
-        Holder.Reference<Biome> selected = selectedOpt.get();
+        Holder<Biome> selected = selectedOpt.get();
         ResourceLocation biomeId = ModdedBiomeDetector.getBiomeId(selected);
         
         if (biomeId == null) {

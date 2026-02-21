@@ -6,7 +6,7 @@ import dev.architectury.registry.registries.RegistrySupplier;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.world.level.chunk.ChunkGenerator;
 import red.gaius.brightbronze.BrightbronzeHorizons;
-import red.gaius.brightbronze.world.gen.VoidChunkGenerator;
+import red.gaius.brightbronze.versioned.Versioned;
 
 /**
  * Registry for world generation components like chunk generators.
@@ -20,7 +20,7 @@ public final class ModWorldGen {
             DeferredRegister.create(BrightbronzeHorizons.MOD_ID, Registries.CHUNK_GENERATOR);
 
     public static final RegistrySupplier<MapCodec<? extends ChunkGenerator>> VOID_GENERATOR =
-            CHUNK_GENERATORS.register("void", () -> VoidChunkGenerator.CODEC);
+            CHUNK_GENERATORS.register("void", () -> Versioned.worldGen().getVoidChunkGeneratorCodec());
 
     private ModWorldGen() {
     }

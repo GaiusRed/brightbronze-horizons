@@ -9,10 +9,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ChunkResult;
 import net.minecraft.server.level.GenerationChunkHolder;
-import net.minecraft.util.ProblemReporter;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.EntitySpawnReason;
-import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.biome.Biome;
@@ -27,12 +24,9 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.chunk.status.ChunkStatus;
 import net.minecraft.world.level.chunk.LevelChunk;
-import net.minecraft.world.level.storage.TagValueInput;
-import net.minecraft.world.level.storage.TagValueOutput;
-import net.minecraft.world.level.storage.ValueInput;
-import net.minecraft.world.level.storage.ValueOutput;
 import net.minecraft.world.phys.AABB;
 import red.gaius.brightbronze.BrightbronzeHorizons;
+import red.gaius.brightbronze.versioned.Versioned;
 import red.gaius.brightbronze.world.rules.BlockReplacementRule;
 
 
@@ -130,8 +124,8 @@ public class ChunkCopyService {
             this.forcedTargetBiome = forcedTargetBiome;
             this.postProcessRules = postProcessRules;
 
-            this.minY = targetLevel.getMinY();
-            this.maxY = targetLevel.getMaxY();
+            this.minY = Versioned.level().getMinY(targetLevel);
+            this.maxY = Versioned.level().getMaxY(targetLevel);
             this.nextY = this.minY;
         }
 
@@ -220,7 +214,7 @@ public class ChunkCopyService {
                     ChunkPostProcessor.apply(targetLevel, targetChunkPos, postProcessRules);
                 }
 
-                targetChunk.markUnsaved();
+                Versioned.chunk().markUnsaved(targetChunk);
 
                 // Force full light update for the chunk.
                 for (int y = minY; y <= maxY; y += 16) {
@@ -330,8 +324,8 @@ public class ChunkCopyService {
             LevelChunk targetChunk = targetLevel.getChunk(targetChunkPos.x, targetChunkPos.z);
 
             // Copy blocks
-            int minY = targetLevel.getMinY();
-            int maxY = targetLevel.getMaxY();
+            int minY = Versioned.level().getMinY(targetLevel);
+            int maxY = Versioned.level().getMaxY(targetLevel);
             int blocksCopied = copyBlocks(sourceLevel, sourceChunkPos, targetLevel, targetChunkPos, minY, maxY + 1);
             
             BrightbronzeHorizons.LOGGER.debug("Copied {} non-air blocks to chunk ({}, {})", 
@@ -351,7 +345,7 @@ public class ChunkCopyService {
             }
 
             // Mark target chunk as needing save and trigger updates
-            targetChunk.markUnsaved();
+            Versioned.chunk().markUnsaved(targetChunk);
             
             // Force full light update for the chunk
             for (int y = minY; y <= maxY; y += 16) {
@@ -384,7 +378,7 @@ public class ChunkCopyService {
         // Fill the chunk's biome container at quart resolution (4x4x4 per section).
         BiomeResolver resolver = (x, y, z, sampler) -> biome;
         targetChunk.fillBiomesFromNoise(resolver, Climate.empty());
-        targetChunk.markUnsaved();
+        Versioned.chunk().markUnsaved(targetChunk);
     }
 
     /**
@@ -483,14 +477,8 @@ public class ChunkCopyService {
             nbtData.putInt("y", targetPos.getY());
             nbtData.putInt("z", targetPos.getZ());
             
-            // Load data into target block entity using MC 1.21 ValueInput API
-            ValueInput valueInput = TagValueInput.create(
-                ProblemReporter.DISCARDING,
-                targetLevel.registryAccess(),
-                nbtData
-            );
-            targetBlockEntity.loadWithComponents(valueInput);
-            targetBlockEntity.setChanged();
+            // Load data into target block entity using version-specific API
+            Versioned.entityCopy().loadBlockEntityData(targetBlockEntity, nbtData, targetLevel);
             
         } catch (Exception e) {
             BrightbronzeHorizons.LOGGER.warn("Failed to copy block entity at {}: {}", 
@@ -522,10 +510,10 @@ public class ChunkCopyService {
         // Create AABB for the entire source chunk (all Y levels)
         AABB chunkBounds = new AABB(
             sourceChunkPos.getMinBlockX(),
-            sourceLevel.getMinY(),
+            Versioned.level().getMinY(sourceLevel),
             sourceChunkPos.getMinBlockZ(),
             sourceChunkPos.getMaxBlockX() + 1,
-            sourceLevel.getMaxY() + 1,
+            Versioned.level().getMaxY(sourceLevel) + 1,
             sourceChunkPos.getMaxBlockZ() + 1
         );
 
@@ -545,15 +533,12 @@ public class ChunkCopyService {
 
         for (Entity sourceEntity : entities) {
             try {
-                // Save entity to NBT using MC 1.21 ValueOutput API
-                TagValueOutput valueOutput = TagValueOutput.createWithContext(
-                    ProblemReporter.DISCARDING,
-                    sourceLevel.registryAccess()
-                );
-                if (!sourceEntity.saveAsPassenger(valueOutput)) {
+                // Serialize entity using version-specific API
+                Optional<CompoundTag> nbtOpt = Versioned.entityCopy().serializeEntity(sourceEntity, sourceLevel);
+                if (nbtOpt.isEmpty()) {
                     continue; // Entity doesn't want to be saved
                 }
-                CompoundTag nbtData = valueOutput.buildResult();
+                CompoundTag nbtData = nbtOpt.get();
 
                 // Calculate new position
                 double newX = sourceEntity.getX() + xOffset;
@@ -570,13 +555,8 @@ public class ChunkCopyService {
                 // Remove UUID so a new one is generated (prevents duplicate UUID issues)
                 nbtData.remove("UUID");
 
-                // Create new entity in target level using MC 1.21 ValueInput API
-                ValueInput valueInput = TagValueInput.create(
-                    ProblemReporter.DISCARDING,
-                    targetLevel.registryAccess(),
-                    nbtData
-                );
-                Optional<Entity> newEntityOpt = EntityType.create(valueInput, targetLevel, EntitySpawnReason.LOAD);
+                // Create new entity using version-specific API
+                Optional<Entity> newEntityOpt = Versioned.entityCopy().deserializeEntity(nbtData, targetLevel);
                 
                 if (newEntityOpt.isPresent()) {
                     Entity newEntity = newEntityOpt.get();
@@ -603,7 +583,7 @@ public class ChunkCopyService {
      */
     public static boolean isEmptyChunk(ServerLevel level, ChunkPos chunkPos) {
         // Check the bottom layer for bedrock (sealed chunk indicator)
-        int minY = level.getMinY();
+        int minY = Versioned.level().getMinY(level);
         BlockPos checkPos = new BlockPos(chunkPos.getMiddleBlockX(), minY, chunkPos.getMiddleBlockZ());
         BlockState state = level.getBlockState(checkPos);
         

@@ -4,13 +4,13 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.Difficulty;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.GameRules;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.Heightmap;
 import red.gaius.brightbronze.BrightbronzeHorizons;
+import red.gaius.brightbronze.versioned.Versioned;
 import red.gaius.brightbronze.world.ChunkSpawnerTier;
 import red.gaius.brightbronze.world.BiomePoolManager;
 import red.gaius.brightbronze.world.rules.BiomeRuleManager;
@@ -132,7 +132,7 @@ public final class ChunkMobSpawner {
                 continue;
             }
 
-            Entity entity = type.create(level, EntitySpawnReason.EVENT);
+            Entity entity = Versioned.mobSpawn().createForEvent(type, level);
             if (entity == null) {
                 return false;
             }
