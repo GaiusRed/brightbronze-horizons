@@ -34,3 +34,6 @@ side = "BOTH"
 
 [[mixins]]
 config = "brightbronze_horizons.mixins.json"
+
+[[mixins]]
+config = "brightbronze_horizons_12110.mixins.json"
